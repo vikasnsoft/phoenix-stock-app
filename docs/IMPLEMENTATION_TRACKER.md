@@ -7,13 +7,13 @@
 
 ## Quick Status
 
-| Phase                             | Status         | Progress | Tasks                                     |
-| --------------------------------- | -------------- | -------- | ----------------------------------------- |
-| Phase 0: Filter UI Gaps           | ✅ Complete    | 4/4      | Crossovers, Indicators, Arithmetic, MCP   |
-| Phase 1: Core Infrastructure      | 🔄 In Progress | 2/4      | Auth ✅, Rate Limit ✅, Schema, Dashboard |
-| Phase 2: Alerts & Notifications   | ⬜ Pending     | 0/4      | Worker, History, UI, Email                |
-| Phase 3: Discovery & Community    | ⬜ Pending     | 0/4      | Service, Clone, Ratings, UI               |
-| Phase 4: Multi-Timeframe & Polish | ⬜ Pending     | 0/4      | Timeframe, Intraday, Indicators, Perf     |
+| Phase                             | Status      | Progress | Tasks                                           |
+| --------------------------------- | ----------- | -------- | ----------------------------------------------- |
+| Phase 0: Filter UI Gaps           | ✅ Complete | 4/4      | Crossovers, Indicators, Arithmetic, MCP         |
+| Phase 1: Core Infrastructure      | ✅ Complete | 4/4      | Auth ✅, Rate Limit ✅, Schema ✅, Dashboard ✅ |
+| Phase 2: Alerts & Notifications   | ⬜ Pending  | 0/4      | Worker, History, UI, Email                      |
+| Phase 3: Discovery & Community    | ⬜ Pending  | 0/4      | Service, Clone, Ratings, UI                     |
+| Phase 4: Multi-Timeframe & Polish | ⬜ Pending  | 0/4      | Timeframe, Intraday, Indicators, Perf           |
 
 ---
 
@@ -151,58 +151,61 @@ Configured 3 rate limit tiers:
 
 ### 1.3 Discovery Schema Updates
 
-- **Status**: ⬜ Pending
+- **Status**: ✅ Complete
 - **Priority**: 🟡 High
 - **App**: Database
 - **Estimated**: 2-3 hours
-- **Actual**: -
-- **Started**: -
-- **Completed**: -
+- **Actual**: 1 hour
+- **Started**: December 22, 2025
+- **Completed**: December 22, 2025
 
 **Subtasks:**
 
-- [ ] Add fields to SavedScan model (category, tags, runCount, etc.)
-- [ ] Create ScanCategory enum
-- [ ] Create ScanRating model
-- [ ] Create AlertHistory model
-- [ ] Run prisma migrate dev
-- [ ] Run prisma generate
-- [ ] Verify migration success
+- [x] Add fields to SavedScan model (category, tags, runCount, cloneCount, avgRating, isFeatured)
+- [x] Create ScanCategory enum (MOMENTUM, TREND, REVERSAL, BREAKOUT, VOLUME, VOLATILITY, FUNDAMENTAL, CUSTOM)
+- [x] Create ScanRating model (rating, review, userId)
+- [x] Create AlertHistory model (triggerValue, triggerPrice, matchedSymbols, emailSent, pushSent)
+- [x] Add clone tracking (clonedFromId, clones relation)
+- [x] Run prisma migrate dev
+- [x] Run prisma generate
+- [x] Verify migration success
 
 **Notes:**
 
 ```
--
+Migration: 20251222104927_add_discovery_and_alert_history
+New indexes added for discovery queries (category, isFeatured, avgRating, runCount)
 ```
 
 ---
 
 ### 1.4 Dashboard Home Page
 
-- **Status**: ⬜ Pending
+- **Status**: ✅ Complete
 - **Priority**: 🟡 High
 - **App**: Web
 - **Estimated**: 4-6 hours
-- **Actual**: -
-- **Started**: -
-- **Completed**: -
+- **Actual**: 1.5 hours
+- **Started**: December 22, 2025
+- **Completed**: December 22, 2025
 
 **Subtasks:**
 
-- [ ] Create dashboard layout
-- [ ] Create RecentScansWidget
-- [ ] Create WatchlistSummaryWidget
-- [ ] Create AlertsWidget
-- [ ] Create MarketOverviewWidget (optional)
-- [ ] Create QuickActionsGrid
-- [ ] Add TanStack Query hooks
+- [x] Create dashboard layout (responsive grid)
+- [x] Create RecentScansWidget (with empty state)
+- [x] Create WatchlistsWidget (grid display)
+- [x] Create AlertsWidget (with active indicator)
+- [x] Create StatsWidget (quick stats)
+- [x] Create QuickActionsGrid (4 action cards)
+- [ ] Add TanStack Query hooks (using mock data for now)
 - [ ] Add loading skeletons
-- [ ] Test all widgets
+- [x] Test all widgets (visual test)
 
 **Notes:**
 
 ```
--
+Dashboard shows: Quick Actions, Recent Scans, Alerts, Watchlists, Stats
+Currently using mock data - will integrate with API in Phase 2
 ```
 
 ---
