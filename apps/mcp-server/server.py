@@ -920,8 +920,9 @@ def _fetch_market_data_from_api(
         'from': from_ts,
         'to': to_ts
     }
-    endpoint = '/api/market-data/candles/local' if USE_LOCAL_CANDLES else '/api/market-data/candles'
-    endpoint = '/api/market-data/candles/local' if USE_LOCAL_CANDLES else '/api/market-data/candles'
+    local_resolutions = {'D', 'W', 'M'}
+    should_use_local = USE_LOCAL_CANDLES and resolution in local_resolutions
+    endpoint = '/api/market-data/candles/local' if should_use_local else '/api/market-data/candles'
     return _api_request('GET', endpoint, params)
 
 

@@ -4,15 +4,63 @@ import { isAxiosError } from 'axios';
 import { PrismaService } from '../database/prisma.service';
 import { FinnhubService, FinnhubCandle, FinnhubSymbol } from './finnhub.service';
 import { Timeframe, Symbol, Exchange } from '@prisma/client';
+import { RedisCacheService } from './redis-cache.service';
+import { StooqService } from './stooq.service';
 
 @Injectable()
 export class MarketDataService {
   private readonly logger = new Logger(MarketDataService.name);
+  private readonly intradayCacheTtlSeconds = Number(process.env.MARKET_DATA_INTRADAY_CACHE_TTL_SECONDS ?? 300);
+  private readonly dailyCacheTtlSeconds = Number(process.env.MARKET_DATA_DAILY_CACHE_TTL_SECONDS ?? 3600);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly finnhub: FinnhubService,
+    private readonly redisCacheService: RedisCacheService,
+    private readonly stooqService: StooqService,
   ) { }
+
+  public async getLocalCandles(symbol: string, resolution: string, from: number, to: number): Promise<FinnhubCandle> {
+    const cacheKey = this.buildCandleCacheKey({
+      symbol,
+      resolution,
+      from,
+      to,
+      scope: 'local',
+    });
+    const cached = await this.redisCacheService.getJson<FinnhubCandle>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const timeframe = this.mapResolutionToTimeframe(resolution);
+    const fromDate = new Date(from * 1000);
+    const toDate = new Date(to * 1000);
+    const dbCandles = await this.prisma.candle.findMany({
+      where: {
+        symbol: { ticker: symbol },
+        timeframe,
+        timestamp: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { timestamp: 'asc' },
+    });
+    const result = dbCandles.length > 0
+      ? this.mapCandlesToFinnhub(dbCandles)
+      : { c: [], h: [], l: [], o: [], v: [], t: [], s: 'no_data' };
+    if (result.s !== 'ok' && resolution === 'D') {
+      const stooqCandles = await this.stooqService.getDailyCandles(symbol, from, to);
+      if (stooqCandles.s === 'ok' && stooqCandles.c.length > 0) {
+        await this.storeCandles(symbol, resolution, stooqCandles);
+        await this.redisCacheService.setJson(cacheKey, stooqCandles, {
+          ttlSeconds: this.getCandleCacheTtlSeconds(resolution),
+        });
+        return stooqCandles;
+      }
+    }
+    await this.redisCacheService.setJson(cacheKey, result, {
+      ttlSeconds: this.getCandleCacheTtlSeconds(resolution),
+    });
+    return result;
+  }
 
   /**
    * Get basic financials
@@ -45,6 +93,17 @@ export class MarketDataService {
    * 2. Return data.
    */
   async getCandles(symbol: string, resolution: string, from: number, to: number): Promise<FinnhubCandle> {
+    const cacheKey = this.buildCandleCacheKey({
+      symbol,
+      resolution,
+      from,
+      to,
+      scope: 'live',
+    });
+    const cached = await this.redisCacheService.getJson<FinnhubCandle>(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const timeframe = this.mapResolutionToTimeframe(resolution);
     const fromDate = new Date(from * 1000);
     const toDate = new Date(to * 1000);
@@ -70,50 +129,51 @@ export class MarketDataService {
 
     // Strict approach: If count is 0, fetch.
     if (dbCandles.length > 0) {
-      // We have some data.
-      // Optional: Check gaps. But advanced gap checks are complex.
-      // Assuming if we have data, we have it.
-      // BUT if I requested "Last 30 days" yesterday (stored 30 days), and today I request "Last 30 days" (offset by 1),
-      // I miss today's candle.
-      // So checking the *latest* timestamp vs 'to' is important.
-
-      const lastCandleTime = dbCandles[dbCandles.length - 1].timestamp.getTime();
-      // If last candle is significantly older than 'to' (accounting for market close/weekends), fetch.
-      // Allow 24h grace or check market open?
-      // Let's keep it robust: Fetch from API if DB is "stale" or empty.
-      // Actually, easiest is: If `to` is > lastCandleTime + 1 day?
-
-      // For simplicity: If dbCandles is empty, definitely fetch.
-      // If not empty, maybe return what we have? 
-      // User said "plan is fetch data from finnhub store in database then run scans on stored data".
-
-      // Let's implement strict gap filling if possible.
-      // Or for MVP: If count < (days * 0.5) => Fetch.
-
-      // Actually, always trying to sync "latest" is good.
-      // But rate limits?
-
-      // Let's trust the cache if it's "recent enough".
-      const now = Date.now();
-      // If 'to' is in the future or 'now', we expect up-to-date data.
-
-      // Let's go with: return DB data if found.
-      return this.mapCandlesToFinnhub(dbCandles);
+      const result = this.mapCandlesToFinnhub(dbCandles);
+      await this.redisCacheService.setJson(cacheKey, result, {
+        ttlSeconds: this.getCandleCacheTtlSeconds(resolution),
+      });
+      return result;
     }
-
+    if (resolution === 'D') {
+      const stooqCandles = await this.stooqService.getDailyCandles(symbol, from, to);
+      if (stooqCandles.s === 'ok' && stooqCandles.c.length > 0) {
+        await this.storeCandles(symbol, resolution, stooqCandles);
+        await this.redisCacheService.setJson(cacheKey, stooqCandles, {
+          ttlSeconds: this.getCandleCacheTtlSeconds(resolution),
+        });
+        return stooqCandles;
+      }
+    }
     this.logger.log(`Data missing for ${symbol} in DB. Fetching from Finnhub...`);
-
-    // 2. Fetch from Finnhub
+    // 2. Fetch from Finnhub (fallback)
     const apiData = await this.finnhub.getCandles(symbol, resolution, from, to);
 
     if (apiData.s === 'ok' && apiData.c && apiData.c.length > 0) {
       // 3. Store in DB
       await this.storeCandles(symbol, resolution, apiData);
-      // 4. Return data
+      await this.redisCacheService.setJson(cacheKey, apiData, {
+        ttlSeconds: this.getCandleCacheTtlSeconds(resolution),
+      });
       return apiData;
     }
+    return apiData;
+  }
 
-    return apiData; // Return empty/error as is
+  private buildCandleCacheKey(params: {
+    symbol: string;
+    resolution: string;
+    from: number;
+    to: number;
+    scope: 'local' | 'live';
+  }): string {
+    return `candles:${params.scope}:${params.symbol.toUpperCase()}:${params.resolution}:${params.from}:${params.to}`;
+  }
+
+  private getCandleCacheTtlSeconds(resolution: string): number {
+    return resolution === 'D' || resolution === 'W' || resolution === 'M'
+      ? this.dailyCacheTtlSeconds
+      : this.intradayCacheTtlSeconds;
   }
 
   private mapCandlesToFinnhub(candles: any[]): FinnhubCandle {
