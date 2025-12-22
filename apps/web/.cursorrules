@@ -1,0 +1,235 @@
+# Web Application Rules (Next.js)
+
+## Project Context
+
+This is a Next.js 16+ web application for a Stock Scanner platform. It provides the user interface for scanning stocks, managing watchlists, setting alerts, and discovering community scans.
+
+## Tech Stack
+
+- **Framework**: Next.js 14+ (App Router)
+- **UI**: React 18+, TailwindCSS, shadcn/ui
+- **State**: TanStack Query (server state), Zustand (client state)
+- **Forms**: React Hook Form + Zod
+- **Icons**: Lucide React
+- **Language**: TypeScript (strict mode)
+
+## Architecture
+
+```
+src/
+├── app/                    # App Router pages
+│   ├── (dashboard)/        # Authenticated routes
+│   │   ├── scans/
+│   │   ├── watchlists/
+│   │   ├── alerts/
+│   │   └── discover/
+│   ├── api/                # API routes (proxy)
+│   └── layout.tsx
+├── components/
+│   ├── ui/                 # shadcn/ui components
+│   └── layout/             # Layout components
+├── features/               # Feature-specific components
+│   ├── scans/
+│   ├── watchlists/
+│   └── alerts/
+├── lib/
+│   ├── api/                # API client (generated/manual)
+│   └── utils.ts
+└── hooks/                  # Custom hooks
+```
+
+## Coding Standards
+
+### Component Structure
+
+```typescript
+"use client"; // Only if needed
+
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+
+interface ComponentProps {
+  title: string;
+  onAction?: () => void;
+}
+
+export function ComponentName({ title, onAction }: ComponentProps) {
+  const [state, setState] = useState(false);
+
+  return (
+    <div className="...">
+      <h1>{title}</h1>
+      <Button onClick={onAction}>Action</Button>
+    </div>
+  );
+}
+```
+
+### Naming Conventions
+
+- **Files**: `kebab-case.tsx` or `PascalCase.tsx` for components
+- **Components**: `PascalCase`
+- **Hooks**: `useCamelCase`
+- **Utils**: `camelCase`
+- **Types**: `PascalCase`
+
+### Page Structure (App Router)
+
+```typescript
+// app/resource/page.tsx
+import { Suspense } from "react";
+import { ResourceList } from "@/features/resource/resource-list";
+import { LoadingSkeleton } from "@/components/ui/skeleton";
+
+export default function ResourcePage() {
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold">Resources</h1>
+      <Suspense fallback={<LoadingSkeleton />}>
+        <ResourceList />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+### Data Fetching (TanStack Query)
+
+```typescript
+// hooks/use-resources.ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+
+export function useResources() {
+  return useQuery({
+    queryKey: ["resources"],
+    queryFn: () => api.resources.list(),
+  });
+}
+
+export function useCreateResource() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateResourceDto) => api.resources.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast.success("Resource created");
+    },
+    onError: () => {
+      toast.error("Failed to create resource");
+    },
+  });
+}
+```
+
+### Form Handling
+
+```typescript
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const schema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export function ResourceForm() {
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", email: "" },
+  });
+
+  const onSubmit = (data: FormData) => {
+    // Handle submission
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>{/* Form fields */}</form>
+    </Form>
+  );
+}
+```
+
+## UI Components (shadcn/ui)
+
+Use shadcn/ui components from `@/components/ui/`:
+
+- `Button`, `Input`, `Select`, `Switch`, `Checkbox`
+- `Card`, `Dialog`, `Sheet`, `Tabs`
+- `Table`, `Badge`, `Avatar`
+- `Form`, `FormField`, `FormItem`
+
+```typescript
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+```
+
+## Styling Guidelines
+
+- Use Tailwind utility classes
+- Follow spacing scale: `space-y-4`, `gap-4`, `p-4`, `m-4`
+- Use semantic colors: `text-muted-foreground`, `bg-muted`
+- Responsive: `md:`, `lg:` prefixes
+
+```typescript
+<div className="container mx-auto py-8 space-y-6">
+  <Card className="hover:bg-muted/50 transition-colors">
+    <CardContent className="p-6">{/* Content */}</CardContent>
+  </Card>
+</div>
+```
+
+## API Integration
+
+```typescript
+// lib/api/client.ts
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+
+export async function apiRequest<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`API Error: ${res.status}`);
+  }
+
+  return res.json();
+}
+```
+
+## Environment Variables
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4001
+```
+
+## Performance
+
+- Use `Suspense` boundaries for loading states
+- Lazy load heavy components with `dynamic()`
+- Optimize images with `next/image`
+- Keep client components minimal
+
+## Do NOT
+
+- Use `any` type
+- Fetch data in client components without React Query
+- Mix server/client components unnecessarily
+- Hardcode API URLs
+- Skip loading/error states
+- Use inline styles (use Tailwind)
+- Create components without TypeScript interfaces
