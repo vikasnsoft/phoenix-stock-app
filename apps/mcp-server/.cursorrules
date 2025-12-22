@@ -1,0 +1,266 @@
+# MCP Server Application Rules (Python)
+
+## Project Context
+
+This is a Python MCP (Model Context Protocol) server for a Stock Scanner platform. It provides AI-powered tools for technical analysis, stock scanning, and trading insights via the FastMCP framework.
+
+## Tech Stack
+
+- **Framework**: FastMCP
+- **Language**: Python 3.10+
+- **Data Processing**: Pandas, NumPy
+- **Caching**: Redis
+- **HTTP Client**: Requests
+
+## Architecture
+
+```
+mcp-server/
+├── server.py           # Main server with all tools/prompts
+├── requirements.txt    # Dependencies
+├── .env               # Environment config
+├── tests/             # Test files
+└── venv/              # Virtual environment
+```
+
+## Server Structure
+
+```python
+# server.py structure
+"""
+1. Imports & Configuration
+2. Redis Cache Setup
+3. Helper Functions
+4. API Client Helpers
+5. Indicator Calculations (SMA, EMA, RSI, MACD, etc.)
+6. Pattern Detection
+7. MCP Tools (@mcp.tool)
+8. MCP Prompts (@mcp.prompt)
+9. Entry Point
+"""
+```
+
+## Coding Standards
+
+### Tool Definition
+
+```python
+@mcp.tool()
+def tool_name(
+    param1: str,
+    param2: int = 14,
+    param3: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """Short description of what the tool does.
+
+    Args:
+        param1: Description of param1.
+        param2: Description of param2 (default: 14).
+        param3: Optional list of items.
+
+    Returns:
+        Dictionary with result data including:
+        - field1: Description
+        - field2: Description
+    """
+    # Implementation
+    return {"status": "success", "data": result}
+```
+
+### Prompt Definition
+
+```python
+@mcp.prompt()
+def prompt_name(
+    symbol: str,
+    timeframe: str = "daily"
+) -> str:
+    """Generate analysis prompt for AI.
+
+    Args:
+        symbol: Stock symbol to analyze.
+        timeframe: Analysis timeframe.
+
+    Returns:
+        Formatted prompt string for AI analysis.
+    """
+    return f"""Analyze {symbol} on {timeframe} timeframe.
+
+Consider:
+1. Technical indicators
+2. Price action
+3. Volume analysis
+"""
+```
+
+### Indicator Functions
+
+```python
+def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Calculate Relative Strength Index.
+    
+    Args:
+        df: DataFrame with 'close' column.
+        period: RSI period (default: 14).
+    
+    Returns:
+        Series with RSI values.
+    """
+    delta = df['close'].diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    
+    avg_gain = gain.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+    
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+```
+
+### Caching Pattern
+
+```python
+def get_from_cache(key: str) -> Optional[Any]:
+    """Get data from Redis cache."""
+    if not CACHE_ENABLED:
+        return None
+    try:
+        cached = redis_client.get(key)
+        if cached:
+            logger.info(f"Cache HIT: {key}")
+            return json.loads(cached)
+    except Exception as e:
+        logger.error(f"Cache read error: {e}")
+    return None
+
+def set_in_cache(key: str, value: Any, ttl: int):
+    """Store data in Redis cache."""
+    if not CACHE_ENABLED:
+        return
+    try:
+        redis_client.setex(key, ttl, json.dumps(value))
+        logger.info(f"Cache SET: {key} (TTL: {ttl}s)")
+    except Exception as e:
+        logger.error(f"Cache write error: {e}")
+```
+
+### Error Handling
+
+```python
+@mcp.tool()
+def risky_operation(symbol: str) -> Dict[str, Any]:
+    """Tool with proper error handling."""
+    try:
+        # Validate input
+        if not symbol or not symbol.strip():
+            return {"error": "Symbol is required"}
+        
+        # Main logic
+        result = perform_operation(symbol)
+        return {"status": "success", "data": result}
+        
+    except ValueError as e:
+        logger.warning(f"Validation error: {e}")
+        return {"error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in risky_operation: {e}")
+        return {"error": f"Operation failed: {str(e)}"}
+```
+
+## API Communication
+
+```python
+API_BASE_URL = os.getenv('API_URL', 'http://localhost:4001')
+
+def _api_request(method: str, endpoint: str, data: Optional[Dict] = None) -> Dict:
+    """Make request to the NestJS API."""
+    url = f"{API_BASE_URL}{endpoint}"
+    try:
+        if method.upper() == 'GET':
+            response = requests.get(url, params=data, timeout=10)
+        else:
+            response = requests.request(method, url, json=data, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"API request failed: {e}")
+        raise ValueError(f"API communication failed: {str(e)}")
+```
+
+## Logging
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("stock-scanner-mcp")
+
+# Usage
+logger.info(f"Processing scan for {len(symbols)} symbols")
+logger.warning(f"No data found for {symbol}")
+logger.error(f"Scan failed: {e}", exc_info=True)
+```
+
+## Type Hints
+
+Always use type hints:
+
+```python
+from typing import Dict, List, Any, Optional, Union
+
+def process_data(
+    symbols: List[str],
+    filters: List[Dict[str, Any]],
+    logic: str = "AND"
+) -> Dict[str, Any]:
+    ...
+```
+
+## Environment Variables
+
+Required in `.env`:
+```
+API_URL=http://localhost:4001
+REDIS_URL=redis://localhost:6379/0
+LOG_LEVEL=INFO
+```
+
+## Cache TTL Settings
+
+```python
+CACHE_TTL = {
+    'stock_data': 3600,     # 1 hour
+    'indicator': 1800,       # 30 minutes
+    'scan_result': 300,      # 5 minutes
+    'financials': 86400,     # 24 hours
+}
+```
+
+## Testing
+
+```python
+# test_indicators.py
+import pytest
+import pandas as pd
+from server import calculate_rsi, calculate_sma
+
+def test_rsi_calculation():
+    df = pd.DataFrame({'close': [44, 44.5, 43.5, 44.5, 45, 45.5, 46]})
+    rsi = calculate_rsi(df, period=5)
+    assert not rsi.isna().all()
+    assert 0 <= rsi.iloc[-1] <= 100
+```
+
+## Do NOT
+
+- Use global mutable state
+- Skip type hints
+- Ignore exceptions silently
+- Hardcode API URLs or secrets
+- Make blocking calls without timeout
+- Return inconsistent response structures
+- Skip docstrings on tools/prompts
+- Use print() instead of logger

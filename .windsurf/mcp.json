@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "figma-dev-mode-mcp-server": {
+      "command": "npx",
+      "args": ["mcp-remote", "http://127.0.0.1:3845/sse"],
+      "env": {}
+    },
+    "prisma-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "prisma", "mcp"],
+      "env": {}
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/vikas/Projects/nSoft/stock-scanner-mcp-server"
+      ],
+      "env": {}
+    },
+    "codebase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@inkr/codebase-mcp",
+        "--",
+        "/Users/vikas/Projects/nSoft/stock-scanner-mcp-server"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "AIzaSyBVotLFm9lxfFKXNu37IkQ8IhjVexBRaOY"
+      }
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "next-devtools": {
+      "command": "npx",
+      "args": ["-y", "next-devtools-mcp@latest"],
+      "env": {}
+    }
+  }
+}

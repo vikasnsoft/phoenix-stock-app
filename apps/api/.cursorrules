@@ -1,0 +1,183 @@
+# API Application Rules (NestJS)
+
+## Project Context
+
+This is a NestJS API application for a Stock Scanner platform. It serves as the central backend providing REST endpoints for scanning, watchlists, alerts, and market data.
+
+## Tech Stack
+
+- **Framework**: NestJS 10.x
+- **ORM**: Prisma with PostgreSQL
+- **Queue**: BullMQ with Redis
+- **Data Source**: Finnhub API
+- **Language**: TypeScript (strict mode)
+
+## Architecture
+
+```
+src/
+├── modules/
+│   ├── auth/           # Authentication (JWT)
+│   ├── scans/          # Scan execution
+│   ├── saved-scans/    # Saved scan CRUD
+│   ├── watchlists/     # Watchlist management
+│   ├── alerts/         # Alert CRUD + evaluation
+│   ├── discovery/      # Public scan discovery
+│   ├── market-data/    # Finnhub integration
+│   ├── ingestion/      # Data ingestion workers
+│   ├── backtests/      # Backtest execution
+│   └── database/       # Prisma service
+├── mcp/                # MCP client service
+└── main.ts
+```
+
+## Coding Standards
+
+### Module Structure
+
+Each module should have:
+- `*.module.ts` - Module definition
+- `*.controller.ts` - HTTP endpoints (thin, delegate to service)
+- `*.service.ts` - Business logic
+- `dto/` - Request/Response DTOs with class-validator
+- `workers/` - BullMQ workers (if applicable)
+
+### Naming Conventions
+
+- **Files**: `kebab-case.ts`
+- **Classes**: `PascalCase`
+- **Methods/Variables**: `camelCase`
+- **Constants**: `SCREAMING_SNAKE_CASE`
+- **DTOs**: `CreateXxxDto`, `UpdateXxxDto`, `XxxResponseDto`
+
+### Controller Rules
+
+```typescript
+@Controller('resource')
+export class ResourceController {
+  constructor(private readonly service: ResourceService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create resource' })
+  async create(@Body() dto: CreateResourceDto): Promise<ApiResponse<Resource>> {
+    const data = await this.service.create(dto);
+    return createSuccessResponse(data);
+  }
+}
+```
+
+### Service Rules
+
+```typescript
+@Injectable()
+export class ResourceService {
+  private readonly logger = new Logger(ResourceService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateResourceDto): Promise<Resource> {
+    // Validate, transform, persist
+    return this.prisma.resource.create({ data: dto });
+  }
+}
+```
+
+### DTO Rules
+
+```typescript
+export class CreateResourceDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  items: string[];
+}
+```
+
+## Finnhub API Integration
+
+- **Rate Limit**: 60 calls/minute (free tier)
+- **Endpoints Used**:
+  - `/stock/candle` - OHLCV data
+  - `/stock/profile2` - Company info
+  - `/stock/metric` - Financials
+  - `/quote` - Real-time quotes
+- **Caching**: Cache candles for 1 hour, quotes for 5 minutes
+
+```typescript
+// Example: Market Data Service
+async getCandles(symbol: string, resolution: string, from: number, to: number) {
+  const cacheKey = `candles:${symbol}:${resolution}:${from}:${to}`;
+  const cached = await this.cache.get(cacheKey);
+  if (cached) return cached;
+
+  const data = await this.finnhub.getCandles(symbol, resolution, from, to);
+  await this.cache.set(cacheKey, data, 3600);
+  return data;
+}
+```
+
+## Worker Rules
+
+```typescript
+@Processor('queue-name')
+export class QueueWorker extends WorkerHost {
+  private readonly logger = new Logger(QueueWorker.name);
+
+  async process(job: Job<JobData>): Promise<Result> {
+    this.logger.log(`Processing job ${job.id}`);
+    try {
+      // Process logic
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`Job ${job.id} failed:`, error);
+      throw error;
+    }
+  }
+}
+```
+
+## Error Handling
+
+- Use NestJS exceptions: `NotFoundException`, `BadRequestException`
+- Global exception filter for consistent error responses
+- Log errors with context
+
+```typescript
+if (!resource) {
+  throw new NotFoundException(`Resource ${id} not found`);
+}
+```
+
+## Testing
+
+- Unit tests: `*.spec.ts` alongside source files
+- E2E tests: `test/` directory
+- Use `@nestjs/testing` for mocking
+
+## Environment Variables
+
+Required in `.env`:
+```
+DATABASE_URL=postgresql://...
+FINNHUB_API_KEY=xxx
+REDIS_HOST=localhost
+REDIS_PORT=6379
+JWT_SECRET=xxx
+MCP_SERVER_URL=http://localhost:8000
+```
+
+## Do NOT
+
+- Put business logic in controllers
+- Use `any` type (use `unknown` if needed)
+- Skip DTO validation
+- Hardcode API keys or secrets
+- Ignore rate limits
+- Leave empty catch blocks

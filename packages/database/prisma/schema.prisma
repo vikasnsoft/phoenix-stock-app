@@ -1,0 +1,414 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MANAGEMENT & AUTHENTICATION
+// ============================================================================
+
+enum UserRole {
+  FREE
+  PRO
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  name          String?
+  passwordHash  String?
+  role          UserRole     @default(FREE)
+  status        UserStatus   @default(ACTIVE)
+  
+  // OAuth fields
+  googleId      String?      @unique
+  picture       String?
+  
+  // Usage limits
+  apiCallsToday Int          @default(0)
+  lastApiReset  DateTime     @default(now())
+  
+  // Timestamps
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  lastLoginAt   DateTime?
+  
+  // Relations
+  watchlists    Watchlist[]
+  savedScans    SavedScan[]
+  alerts        Alert[]
+  backtests     Backtest[]
+  
+  @@index([email])
+  @@index([googleId])
+  @@map("users")
+}
+
+// ============================================================================
+// SYMBOL MASTER DATA
+// ============================================================================
+
+enum Exchange {
+  NYSE
+  NASDAQ
+  AMEX
+  OTC
+  LSE
+  TSX
+  OTHER
+}
+
+model Symbol {
+  id                String       @id @default(uuid())
+  ticker            String       @unique
+  name              String
+  exchange          Exchange
+  currency          String       @default("USD")
+  
+  // Company details
+  sector            String?
+  industry          String?
+  marketCap         BigInt?
+  description       String?
+  website           String?
+  
+  // Trading metadata
+  isActive          Boolean      @default(true)
+  ipo               DateTime?
+  delistDate        DateTime?
+  
+  // Timestamps
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  lastSyncedAt      DateTime?
+  
+  // Relations
+  candles           Candle[]
+  indicators        IndicatorCache[]
+  watchlistSymbols  WatchlistSymbol[]
+  financialMetrics  FinancialMetric[]
+  
+  @@index([ticker])
+  @@index([exchange])
+  @@index([sector])
+  @@index([isActive])
+  @@map("symbols")
+}
+
+// ============================================================================
+// TIME-SERIES DATA (OHLCV Candles)
+// Note: In production, convert this to a TimescaleDB hypertable
+// ============================================================================
+
+enum Timeframe {
+  MIN_1
+  MIN_5
+  MIN_15
+  MIN_30
+  HOUR_1
+  HOUR_4
+  DAY_1
+  WEEK_1
+  MONTH_1
+}
+
+model Candle {
+  id          String     @id @default(uuid())
+  symbolId    String
+  symbol      Symbol     @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+  
+  timeframe   Timeframe
+  timestamp   DateTime
+  
+  // OHLCV data
+  open        Decimal    @db.Decimal(20, 8)
+  high        Decimal    @db.Decimal(20, 8)
+  low         Decimal    @db.Decimal(20, 8)
+  close       Decimal    @db.Decimal(20, 8)
+  volume      BigInt
+  
+  // Metadata
+  createdAt   DateTime   @default(now())
+  
+  @@unique([symbolId, timeframe, timestamp])
+  @@index([symbolId, timeframe, timestamp(sort: Desc)])
+  @@index([timestamp])
+  @@map("candles")
+}
+
+// ============================================================================
+// TECHNICAL INDICATORS CACHE
+// ============================================================================
+
+enum IndicatorType {
+  SMA
+  EMA
+  RSI
+  MACD
+  BOLLINGER_BANDS
+  ATR
+  STOCHASTIC
+  ADX
+  OBV
+  VWAP
+}
+
+model IndicatorCache {
+  id          String        @id @default(uuid())
+  symbolId    String
+  symbol      Symbol        @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+  
+  indicator   IndicatorType
+  timeframe   Timeframe
+  period      Int
+  timestamp   DateTime
+  
+  // Generic value storage (JSON for complex indicators like MACD, Bollinger)
+  value       Json
+  
+  // Timestamps
+  createdAt   DateTime      @default(now())
+  
+  @@unique([symbolId, indicator, timeframe, period, timestamp])
+  @@index([symbolId, indicator, timeframe])
+  @@map("indicator_cache")
+}
+
+// ============================================================================
+// WATCHLISTS
+// ============================================================================
+
+model Watchlist {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  isPublic    Boolean           @default(false)
+  
+  // Display order
+  sortOrder   Int               @default(0)
+  
+  // Timestamps
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Relations
+  symbols     WatchlistSymbol[]
+  
+  @@index([userId])
+  @@map("watchlists")
+}
+
+model WatchlistSymbol {
+  id           String     @id @default(uuid())
+  watchlistId  String
+  watchlist    Watchlist  @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  
+  symbolId     String
+  symbol       Symbol     @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+  
+  // Symbol-specific notes
+  notes        String?
+  addedAt      DateTime   @default(now())
+  
+  @@unique([watchlistId, symbolId])
+  @@index([watchlistId])
+  @@map("watchlist_symbols")
+}
+
+// ============================================================================
+// SAVED SCANS (Screener Definitions)
+// ============================================================================
+
+model SavedScan {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  
+  // Scan definition (stored as JSON AST)
+  definition  Json
+  
+  // Default symbol universe
+  symbolUniverse String[] // Array of ticker symbols
+  
+  // Sharing
+  isPublic    Boolean    @default(false)
+  
+  // Timestamps
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  lastRunAt   DateTime?
+  
+  // Relations
+  backtests   Backtest[]
+  versions    SavedScanVersion[]
+  
+  @@index([userId])
+  @@index([isPublic])
+  @@map("saved_scans")
+}
+
+model SavedScanVersion {
+  id            String    @id @default(uuid())
+  savedScanId   String
+  savedScan     SavedScan @relation(fields: [savedScanId], references: [id], onDelete: Cascade)
+
+  versionNumber Int
+  definition    Json
+  createdAt     DateTime  @default(now())
+  createdById   String?
+  comment       String?
+
+  @@unique([savedScanId, versionNumber])
+  @@index([savedScanId])
+  @@map("saved_scan_versions")
+}
+
+// ============================================================================
+// ALERTS
+// ============================================================================
+
+enum AlertType {
+  PRICE_CROSS
+  INDICATOR_CROSS
+  SCAN_MATCH
+  PERCENT_CHANGE
+}
+
+enum AlertStatus {
+  ACTIVE
+  TRIGGERED
+  EXPIRED
+  CANCELLED
+}
+
+model Alert {
+  id          String       @id @default(uuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  alertType   AlertType
+  
+  // Alert condition (JSON)
+  condition   Json
+  
+  // Target symbol (optional, for price/indicator alerts)
+  ticker      String?
+  
+  status      AlertStatus  @default(ACTIVE)
+  
+  // Notification settings
+  emailNotify Boolean      @default(true)
+  pushNotify  Boolean      @default(false)
+  
+  // Expiration
+  expiresAt   DateTime?
+  
+  // Timestamps
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  triggeredAt DateTime?
+  
+  @@index([userId])
+  @@index([status])
+  @@index([ticker])
+  @@map("alerts")
+}
+
+// ============================================================================
+// BACKTESTS
+// ============================================================================
+
+enum BacktestStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Backtest {
+  id          String         @id @default(uuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  savedScanId String?
+  savedScan   SavedScan?     @relation(fields: [savedScanId], references: [id], onDelete: SetNull)
+  
+  name        String
+  
+  // Backtest parameters
+  startDate   DateTime
+  endDate     DateTime
+  timeframe   Timeframe
+  
+  // Scan definition (denormalized for historical record)
+  definition  Json
+  
+  status      BacktestStatus @default(PENDING)
+  
+  // Results (stored as JSON)
+  results     Json?
+  
+  // Performance metrics
+  totalMatches Int?
+  avgReturn    Decimal?       @db.Decimal(10, 4)
+  winRate      Decimal?       @db.Decimal(5, 2)
+  
+  // Error info
+  errorMessage String?
+  
+  // Timestamps
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  @@index([userId])
+  @@index([status])
+  @@map("backtests")
+}
+
+// ============================================================================
+// FINANCIAL METRICS CACHE
+// ============================================================================
+
+model FinancialMetric {
+  id        String   @id @default(uuid())
+  symbolId  String
+  symbol    Symbol   @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+  metric    Json
+  fetchedAt DateTime @default(now())
+  
+  @@index([symbolId, fetchedAt(sort: Desc)])
+  @@map("financial_metrics")
+}
+
+model SystemStatus {
+  key       String   @id
+  lastRun   DateTime
+  status    String
+  message   String?
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_status")
+}

@@ -1,0 +1,30 @@
+{
+  "scans": {
+    "scan_d1acd019": {
+      "id": "scan_d1acd019",
+      "name": "RSI Momentum Scan",
+      "filters": [
+        {
+          "type": "indicator",
+          "field": "RSI",
+          "operator": "gt",
+          "value": 40,
+          "time_period": 14
+        }
+      ],
+      "filter_logic": "AND",
+      "symbols": [
+        "AAPL",
+        "MSFT"
+      ],
+      "description": "RSI > 40 scan for testing",
+      "created_at": "2025-11-17T10:39:43.739834",
+      "updated_at": "2025-11-17T10:39:43.739834"
+    }
+  },
+  "order": [
+    "scan_d1acd019"
+  ],
+  "last_updated": "2025-11-17T10:39:43.739844",
+  "total_count": 1
+}
