@@ -59,9 +59,21 @@ export class MCPService {
     }
     try {
       return JSON.parse(stdout) as TResponse;
-    } catch (error) {
-      this.logger.error(`Failed to parse MCP response: ${error}`);
-      throw error;
+    } catch {
+      // The MCP server outputs logs before JSON, try to extract JSON from last line
+      const lines = stdout.trim().split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (line.startsWith('{') && line.endsWith('}')) {
+          try {
+            return JSON.parse(line) as TResponse;
+          } catch {
+            continue;
+          }
+        }
+      }
+      this.logger.error(`Failed to parse MCP response. Output: ${stdout.slice(0, 500)}`);
+      throw new Error('Failed to parse MCP response as JSON');
     }
   }
 }
