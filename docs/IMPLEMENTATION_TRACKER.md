@@ -7,13 +7,13 @@
 
 ## Quick Status
 
-| Phase                             | Status      | Progress | Tasks                                   |
-| --------------------------------- | ----------- | -------- | --------------------------------------- |
-| Phase 0: Filter UI Gaps           | ✅ Complete | 4/4      | Crossovers, Indicators, Arithmetic, MCP |
-| Phase 1: Core Infrastructure      | ⬜ Pending  | 0/4      | Auth, Rate Limit, Schema, Dashboard     |
-| Phase 2: Alerts & Notifications   | ⬜ Pending  | 0/4      | Worker, History, UI, Email              |
-| Phase 3: Discovery & Community    | ⬜ Pending  | 0/4      | Service, Clone, Ratings, UI             |
-| Phase 4: Multi-Timeframe & Polish | ⬜ Pending  | 0/4      | Timeframe, Intraday, Indicators, Perf   |
+| Phase                             | Status         | Progress | Tasks                                     |
+| --------------------------------- | -------------- | -------- | ----------------------------------------- |
+| Phase 0: Filter UI Gaps           | ✅ Complete    | 4/4      | Crossovers, Indicators, Arithmetic, MCP   |
+| Phase 1: Core Infrastructure      | 🔄 In Progress | 2/4      | Auth ✅, Rate Limit ✅, Schema, Dashboard |
+| Phase 2: Alerts & Notifications   | ⬜ Pending     | 0/4      | Worker, History, UI, Email                |
+| Phase 3: Discovery & Community    | ⬜ Pending     | 0/4      | Service, Clone, Ratings, UI               |
+| Phase 4: Multi-Timeframe & Polish | ⬜ Pending     | 0/4      | Timeframe, Intraday, Indicators, Perf     |
 
 ---
 
@@ -90,49 +90,50 @@
 
 ### 1.1 Authentication System
 
-- **Status**: ⬜ Pending
+- **Status**: ✅ Complete
 - **Priority**: 🔴 Critical
 - **App**: API
 - **Estimated**: 4-6 hours
-- **Actual**: -
-- **Started**: -
-- **Completed**: -
+- **Actual**: 2 hours
+- **Started**: December 22, 2025
+- **Completed**: December 22, 2025
 
 **Subtasks:**
 
-- [ ] Install dependencies (@nestjs/passport, @nestjs/jwt, bcrypt)
-- [ ] Create auth module structure
-- [ ] Create LoginDto, RegisterDto
-- [ ] Implement AuthService (login, register, validateUser)
-- [ ] Create JwtStrategy
-- [ ] Create JwtAuthGuard, RolesGuard
-- [ ] Create AuthController endpoints
-- [ ] Add JWT_SECRET to .env
-- [ ] Test login/register flow
-- [ ] Add to AppModule imports
+- [x] Install dependencies (@nestjs/passport, @nestjs/jwt, bcrypt, @nestjs/throttler)
+- [x] Create auth module structure
+- [x] Create LoginDto, RegisterDto
+- [x] Implement AuthService (login, register, validateUser)
+- [x] Create JwtStrategy, LocalStrategy
+- [x] Create JwtAuthGuard, RolesGuard
+- [x] Create AuthController endpoints (register, login, profile, me)
+- [x] Add JWT_SECRET to .env.example
+- [ ] Test login/register flow (requires npm install)
+- [x] Add to AppModule imports
 
 **Notes:**
 
 ```
--
+Run `cd apps/api && npm install` to install new dependencies.
+Auth endpoints: POST /auth/register, POST /auth/login, GET /auth/profile, GET /auth/me
 ```
 
 ---
 
 ### 1.2 Rate Limiting
 
-- **Status**: ⬜ Pending
+- **Status**: ✅ Complete
 - **Priority**: 🟡 High
 - **App**: API
 - **Estimated**: 1-2 hours
-- **Actual**: -
-- **Started**: -
-- **Completed**: -
+- **Actual**: 0.5 hours
+- **Started**: December 22, 2025
+- **Completed**: December 22, 2025
 
 **Subtasks:**
 
-- [ ] Install @nestjs/throttler
-- [ ] Configure ThrottlerModule in AppModule
+- [x] Install @nestjs/throttler (added to package.json)
+- [x] Configure ThrottlerModule in AppModule (3 tiers: short/medium/long)
 - [ ] Add global ThrottlerGuard
 - [ ] Add @SkipThrottle() to health endpoints
 - [ ] Test rate limiting behavior
@@ -140,7 +141,10 @@
 **Notes:**
 
 ```
--
+Configured 3 rate limit tiers:
+- short: 10 requests per second
+- medium: 50 requests per 10 seconds
+- long: 200 requests per minute
 ```
 
 ---

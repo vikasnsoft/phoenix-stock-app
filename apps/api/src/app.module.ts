@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './modules/database/database.module';
 import { QueuesModule } from './modules/queues/queues.module';
 import { MarketDataModule } from './modules/market-data/market-data.module';
@@ -12,11 +13,29 @@ import { BacktestsModule } from './modules/backtests/backtests.module';
 import { EventsModule } from './modules/events/events.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
+    // Rate Limiting
+    ThrottlerModule.forRoot([{
+      name: 'short',
+      ttl: 1000,
+      limit: 10,
+    }, {
+      name: 'medium',
+      ttl: 10000,
+      limit: 50,
+    }, {
+      name: 'long',
+      ttl: 60000,
+      limit: 200,
+    }]),
+    // Core Modules
     DatabaseModule,
     QueuesModule,
+    AuthModule,
+    // Feature Modules
     MarketDataModule,
     SymbolsModule,
     IngestionModule,

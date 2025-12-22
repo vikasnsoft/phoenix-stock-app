@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* Light Theme Overrides */
+:root[data-theme="light"] {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8fafc;
+  --color-bg-tertiary: #f1f5f9;
+  --color-bg-hover: #e2e8f0;
+
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+
+  --color-border: #cbd5e1;
+  --color-border-light: #e2e8f0;
+
+  --color-offset: #94a3b8;
+  --color-attribute: #0f172a;
+  --color-operator: #d946ef;
+  --color-number: #3b82f6;
+}
+
+/* Filter Row Styles */
+.filter-row {
+  @apply rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors;
+}
+
+.filter-row:hover .action-buttons {
+  @apply opacity-100;
+}
+
+.action-buttons {
+  @apply opacity-0 transition-opacity;
+}
+
+/* Inline Select Styles */
+.inline-select {
+  @apply inline-flex items-center gap-1 px-2 py-1 hover:bg-slate-100 rounded transition-colors;
+}
+
+.inline-select[data-type="offset"] {
+  @apply text-slate-500;
+}
+
+.inline-select[data-type="attribute"] {
+  @apply font-semibold text-slate-900;
+}
+
+.inline-select[data-type="operator"] {
+  @apply font-semibold text-pink-600;
+}
+
+/* Magic Filters Panel */
+.magic-filters-panel {
+  @apply bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 rounded-lg p-6 border border-slate-700;
+}
+
+.magic-filters-input {
+  @apply bg-slate-800 text-white border-slate-700 placeholder:text-slate-500;
+}
+
+.magic-pill {
+  @apply inline-flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors;
+}
