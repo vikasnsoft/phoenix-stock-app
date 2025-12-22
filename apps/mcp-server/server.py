@@ -3538,18 +3538,19 @@ def parse_natural_language_query(query: str) -> Dict[str, Any]:
             else:
                 expression["measure"] = lhs_measure['field']
 
-            # Create the full node
+            # Determine correct filter type for scan_stocks compatibility
+            filter_type = "indicator" if lhs_measure.get('type') == 'indicator' else "price"
+            
+            # Create the full node (use camelCase for API DTO compatibility)
             node = {
                 "id": node_id,
-                "type": "simple",
+                "type": filter_type,  # Must be valid FilterType: price, indicator, volume, etc.
                 "enabled": True,
                 "field": lhs_measure.get('field', 'close'),
-                "filterType": "indicator" if lhs_measure.get('type') == 'indicator' else "price", 
                 "operator": operator,
                 "value": rhs_val if rhs_is_number else rhs_measure,
-                "valueType": "number" if rhs_is_number else "indicator", 
-                "expression": expression,
-                "time_period": lhs_measure.get('time_period', 14) 
+                "timePeriod": lhs_measure.get('time_period', 14),
+                "expression": expression
             }
             
             filters.append(node)
