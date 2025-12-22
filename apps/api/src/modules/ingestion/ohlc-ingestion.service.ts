@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Timeframe } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { FinnhubService } from '../market-data/finnhub.service';
+import { StooqService } from '../market-data/stooq.service';
 
 export interface IngestSymbolRangeParams {
   symbol: string;
@@ -22,19 +23,18 @@ export class OhlcIngestionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly finnhub: FinnhubService,
+    private readonly stooqService: StooqService,
   ) { }
 
   async ingestDataForSymbol(symbol: string, resolution: string): Promise<IngestSymbolRangeResult> {
     const to = Math.floor(Date.now() / 1000);
     // Fetch last 24 hours for intraday
     const from = to - (24 * 60 * 60);
-
     // Map human readable resolution to API resolution if needed, or pass through
     // For now assuming resolution is passed as API compatible or mapping handled inside ingestSymbolRange?
     // The previous implementation expects Finnhub resolutions ('D', '60', etc) but mapResolutionToTimeframe handles both?
     // Actually mapResolutionToTimeframe only handles Finnhub style keys.
     // Let's ensure we pass Finnhub keys. 
-
     // Simple mapping for '15min' -> '15' logic
     let apiResolution = resolution;
     if (resolution === '15min') apiResolution = '15';
@@ -42,7 +42,6 @@ export class OhlcIngestionService {
     if (resolution === '1min') apiResolution = '1';
     if (resolution === '60min') apiResolution = '60';
     if (resolution === 'daily') apiResolution = 'D';
-
     return this.ingestSymbolRange({
       symbol,
       resolution: apiResolution,
@@ -53,30 +52,24 @@ export class OhlcIngestionService {
 
   async ingestSymbolRange(params: IngestSymbolRangeParams): Promise<IngestSymbolRangeResult> {
     const { symbol, resolution, from, to } = params;
-
     const symbolRecord = await this.prisma.symbol.findUnique({
       where: { ticker: symbol },
     });
-
     if (!symbolRecord) {
       throw new NotFoundException(`Symbol ${symbol} not found`);
     }
-
-    const candles = await this.finnhub.getCandles(symbol, resolution, from, to);
-
+    const candles = resolution === 'D'
+      ? await this.stooqService.getDailyCandles(symbol, from, to)
+      : await this.finnhub.getCandles(symbol, resolution, from, to);
     if (!candles || candles.s !== 'ok' || !candles.c || candles.c.length === 0) {
       this.logger.warn(`No candle data for ${symbol} (resolution=${resolution}) status=${candles?.s}`);
       return { inserted: 0, updated: 0 };
     }
-
     const timeframe = this.mapResolutionToTimeframe(resolution);
-
     let inserted = 0;
     let updated = 0;
-
     for (let i = 0; i < candles.c.length; i += 1) {
       const timestamp = new Date(candles.t[i] * 1000);
-
       const result = await this.prisma.candle.upsert({
         where: {
           symbolId_timeframe_timestamp: {
@@ -103,7 +96,6 @@ export class OhlcIngestionService {
           volume: BigInt(candles.v[i]),
         },
       });
-
       // Heuristic: if createdAt === timestamp and no previous row, treat as inserted
       if (result.createdAt.getTime() === result.timestamp.getTime()) {
         inserted += 1;
@@ -111,9 +103,7 @@ export class OhlcIngestionService {
         updated += 1;
       }
     }
-
     this.logger.log(`Ingested candles for ${symbol} (${resolution}) inserted=${inserted} updated=${updated}`);
-
     return { inserted, updated };
   }
 

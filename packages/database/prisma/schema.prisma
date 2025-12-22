@@ -236,10 +236,21 @@ model WatchlistSymbol {
 // SAVED SCANS (Screener Definitions)
 // ============================================================================
 
+enum ScanCategory {
+  MOMENTUM
+  TREND
+  REVERSAL
+  BREAKOUT
+  VOLUME
+  VOLATILITY
+  FUNDAMENTAL
+  CUSTOM
+}
+
 model SavedScan {
-  id          String     @id @default(uuid())
+  id          String        @id @default(uuid())
   userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   name        String
   description String?
@@ -248,23 +259,61 @@ model SavedScan {
   definition  Json
   
   // Default symbol universe
-  symbolUniverse String[] // Array of ticker symbols
+  symbolUniverse String[]   // Array of ticker symbols
   
-  // Sharing
-  isPublic    Boolean    @default(false)
+  // Discovery & Categorization
+  category    ScanCategory  @default(CUSTOM)
+  tags        String[]      @default([])
+  
+  // Sharing & Discovery
+  isPublic    Boolean       @default(false)
+  isFeatured  Boolean       @default(false)
+  
+  // Usage Statistics
+  runCount    Int           @default(0)
+  cloneCount  Int           @default(0)
+  avgRating   Float         @default(0)
+  
+  // Clone tracking
+  clonedFromId String?
+  clonedFrom   SavedScan?   @relation("ScanClones", fields: [clonedFromId], references: [id], onDelete: SetNull)
+  clones       SavedScan[]  @relation("ScanClones")
   
   // Timestamps
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   lastRunAt   DateTime?
   
   // Relations
   backtests   Backtest[]
   versions    SavedScanVersion[]
+  ratings     ScanRating[]
   
   @@index([userId])
   @@index([isPublic])
+  @@index([category])
+  @@index([isFeatured])
+  @@index([avgRating(sort: Desc)])
+  @@index([runCount(sort: Desc)])
   @@map("saved_scans")
+}
+
+model ScanRating {
+  id          String    @id @default(uuid())
+  savedScanId String
+  savedScan   SavedScan @relation(fields: [savedScanId], references: [id], onDelete: Cascade)
+  userId      String
+  
+  rating      Int       // 1-5 stars
+  review      String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([savedScanId, userId])
+  @@index([savedScanId])
+  @@index([userId])
+  @@map("scan_ratings")
 }
 
 model SavedScanVersion {
@@ -302,9 +351,9 @@ enum AlertStatus {
 }
 
 model Alert {
-  id          String       @id @default(uuid())
+  id          String         @id @default(uuid())
   userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   name        String
   alertType   AlertType
@@ -315,24 +364,51 @@ model Alert {
   // Target symbol (optional, for price/indicator alerts)
   ticker      String?
   
-  status      AlertStatus  @default(ACTIVE)
+  status      AlertStatus    @default(ACTIVE)
   
   // Notification settings
-  emailNotify Boolean      @default(true)
-  pushNotify  Boolean      @default(false)
+  emailNotify Boolean        @default(true)
+  pushNotify  Boolean        @default(false)
   
   // Expiration
   expiresAt   DateTime?
   
   // Timestamps
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   triggeredAt DateTime?
+  
+  // Relations
+  history     AlertHistory[]
   
   @@index([userId])
   @@index([status])
   @@index([ticker])
   @@map("alerts")
+}
+
+model AlertHistory {
+  id          String    @id @default(uuid())
+  alertId     String
+  alert       Alert     @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  
+  // Trigger details
+  triggerValue  Float?    // The value that triggered the alert
+  triggerPrice  Float?    // Price at trigger time
+  matchedSymbols String[] // Symbols that matched (for scan alerts)
+  
+  // Notification status
+  emailSent   Boolean   @default(false)
+  pushSent    Boolean   @default(false)
+  
+  // Metadata
+  metadata    Json?     // Additional context (indicator values, etc.)
+  
+  triggeredAt DateTime  @default(now())
+  
+  @@index([alertId])
+  @@index([triggeredAt(sort: Desc)])
+  @@map("alert_history")
 }
 
 // ============================================================================

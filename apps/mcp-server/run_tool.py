@@ -3,9 +3,19 @@
 
 import asyncio
 import json
+import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict
+
+# Suppress logging before importing fastmcp
+os.environ["FASTMCP_LOG_LEVEL"] = "CRITICAL"
+os.environ["MCP_LOG_LEVEL"] = "CRITICAL"
+logging.getLogger().setLevel(logging.CRITICAL)
+logging.getLogger("fastmcp").setLevel(logging.CRITICAL)
+logging.getLogger("mcp").setLevel(logging.CRITICAL)
+logging.getLogger("stock-scanner-mcp").setLevel(logging.CRITICAL)
 
 from fastmcp import Client
 

@@ -920,8 +920,9 @@ def _fetch_market_data_from_api(
         'from': from_ts,
         'to': to_ts
     }
-    endpoint = '/api/market-data/candles/local' if USE_LOCAL_CANDLES else '/api/market-data/candles'
-    endpoint = '/api/market-data/candles/local' if USE_LOCAL_CANDLES else '/api/market-data/candles'
+    local_resolutions = {'D', 'W', 'M'}
+    should_use_local = USE_LOCAL_CANDLES and resolution in local_resolutions
+    endpoint = '/api/market-data/candles/local' if should_use_local else '/api/market-data/candles'
     return _api_request('GET', endpoint, params)
 
 
@@ -3538,18 +3539,19 @@ def parse_natural_language_query(query: str) -> Dict[str, Any]:
             else:
                 expression["measure"] = lhs_measure['field']
 
-            # Create the full node
+            # Determine correct filter type for scan_stocks compatibility
+            filter_type = "indicator" if lhs_measure.get('type') == 'indicator' else "price"
+            
+            # Create the full node (use camelCase for API DTO compatibility)
             node = {
                 "id": node_id,
-                "type": "simple",
+                "type": filter_type,  # Must be valid FilterType: price, indicator, volume, etc.
                 "enabled": True,
                 "field": lhs_measure.get('field', 'close'),
-                "filterType": "indicator" if lhs_measure.get('type') == 'indicator' else "price", 
                 "operator": operator,
                 "value": rhs_val if rhs_is_number else rhs_measure,
-                "valueType": "number" if rhs_is_number else "indicator", 
-                "expression": expression,
-                "time_period": lhs_measure.get('time_period', 14) 
+                "timePeriod": lhs_measure.get('time_period', 14),
+                "expression": expression
             }
             
             filters.append(node)
