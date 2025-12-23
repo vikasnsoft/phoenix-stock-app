@@ -14,6 +14,7 @@ import { EventsModule } from './modules/events/events.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 
@@ -52,6 +53,7 @@ import { ExpressAdapter } from '@bull-board/express';
     BacktestsModule,
     EventsModule,
     AlertsModule,
+    DiscoveryModule,
     MonitoringModule,
   ]
 })
