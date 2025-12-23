@@ -66,11 +66,29 @@ export class OhlcIngestionService {
       return { inserted: 0, updated: 0 };
     }
     const timeframe = this.mapResolutionToTimeframe(resolution);
+    if (resolution === 'D') {
+      const records = candles.t.map((t: number, i: number) => ({
+        symbolId: symbolRecord.id,
+        timeframe,
+        timestamp: new Date(t * 1000),
+        open: candles.o[i],
+        high: candles.h[i],
+        low: candles.l[i],
+        close: candles.c[i],
+        volume: BigInt(candles.v[i]),
+      }));
+      const created = await this.prisma.candle.createMany({
+        data: records,
+        skipDuplicates: true,
+      });
+      this.logger.log(`Ingested candles for ${symbol} (${resolution}) inserted=${created.count} updated=0`);
+      return { inserted: created.count, updated: 0 };
+    }
     let inserted = 0;
     let updated = 0;
     for (let i = 0; i < candles.c.length; i += 1) {
       const timestamp = new Date(candles.t[i] * 1000);
-      const result = await this.prisma.candle.upsert({
+      await this.prisma.candle.upsert({
         where: {
           symbolId_timeframe_timestamp: {
             symbolId: symbolRecord.id,
@@ -96,12 +114,7 @@ export class OhlcIngestionService {
           volume: BigInt(candles.v[i]),
         },
       });
-      // Heuristic: if createdAt === timestamp and no previous row, treat as inserted
-      if (result.createdAt.getTime() === result.timestamp.getTime()) {
-        inserted += 1;
-      } else {
-        updated += 1;
-      }
+      inserted += 1;
     }
     this.logger.log(`Ingested candles for ${symbol} (${resolution}) inserted=${inserted} updated=${updated}`);
     return { inserted, updated };

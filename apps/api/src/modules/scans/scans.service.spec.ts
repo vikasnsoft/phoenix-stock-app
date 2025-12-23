@@ -5,14 +5,22 @@ import { RunScanDto } from './dto/run-scan.dto';
 import { RunPresetScanDto } from './dto/run-preset-scan.dto';
 import { ScansService } from './scans.service';
 import { NodeType } from '../common/dto/expression.dto';
+import { PrismaService } from '../database/prisma.service';
 
 describe('ScansService', () => {
   let service: ScansService;
   let mcpService: { executeTool: jest.Mock };
+  let prismaService: { symbol: { findMany: jest.Mock } };
 
   beforeEach(async () => {
     mcpService = {
       executeTool: jest.fn().mockResolvedValue({ matched_stocks: [], total_scanned: 0 })
+    };
+
+    prismaService = {
+      symbol: {
+        findMany: jest.fn().mockResolvedValue([{ ticker: 'AAPL' }, { ticker: 'MSFT' }]),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -21,6 +29,10 @@ describe('ScansService', () => {
         {
           provide: MCPService,
           useValue: mcpService
+        },
+        {
+          provide: PrismaService,
+          useValue: prismaService
         }
       ]
     }).compile();
@@ -31,7 +43,7 @@ describe('ScansService', () => {
   it('should delegate runCustomScan to scan_stocks with mapped payload', async () => {
     const filters: FilterConditionDto[] = [
       {
-        type: 'price',
+        type: FilterType.PRICE,
         field: 'close',
         operator: 'gt',
         value: 0
@@ -63,6 +75,31 @@ describe('ScansService', () => {
       }
     });
     expect(result).toEqual({ matched_stocks: [], total_scanned: 0 });
+  });
+
+  it('should resolve DB universe when symbols is not provided', async () => {
+    const dto: RunScanDto = {
+      filters: [
+        {
+          type: FilterType.PRICE,
+          field: 'close',
+          operator: 'gt',
+          value: 0,
+        },
+      ],
+      filterLogic: FilterLogic.AND,
+    };
+
+    await service.runCustomScan(dto);
+
+    expect(prismaService.symbol.findMany).toHaveBeenCalledTimes(1);
+    expect(mcpService.executeTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          symbols: ['AAPL', 'MSFT'],
+        }),
+      }),
+    );
   });
 
   it('should pass expression field through to MCP', async () => {

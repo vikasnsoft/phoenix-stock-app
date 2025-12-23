@@ -14,6 +14,8 @@ import { EventsModule } from './modules/events/events.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { ExpressAdapter } from '@bull-board/express';
 
 @Module({
   imports: [
@@ -35,6 +37,10 @@ import { AuthModule } from './modules/auth/auth.module';
     DatabaseModule,
     QueuesModule,
     AuthModule,
+    BullBoardModule.forRoot({
+      route: '/admin/queues',
+      adapter: ExpressAdapter,
+    }),
     // Feature Modules
     MarketDataModule,
     SymbolsModule,

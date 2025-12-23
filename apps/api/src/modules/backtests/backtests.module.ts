@@ -4,6 +4,8 @@ import { BacktestsController } from './backtests.controller';
 import { BacktestsService } from './backtests.service';
 
 import { BullModule } from '@nestjs/bullmq';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { Queue } from 'bullmq';
 import { BacktestWorker } from './workers/backtest.worker';
 
@@ -12,6 +14,10 @@ import { BacktestWorker } from './workers/backtest.worker';
     ScansModule,
     BullModule.registerQueue({
       name: 'backtest-execution',
+    }),
+    BullBoardModule.forFeature({
+      name: 'backtest-execution',
+      adapter: BullMQAdapter,
     }),
   ],
   controllers: [BacktestsController],

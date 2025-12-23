@@ -3374,6 +3374,17 @@ def parse_natural_language_query(query: str) -> Dict[str, Any]:
     
     query = query.lower()
     filters = []
+    
+    # Strip common prefixes
+    prefixes_to_strip = [
+        r'^find\s+stocks?\s+(whose|where|with|that\s+have)?\s*',
+        r'^show\s+me\s+stocks?\s+(whose|where|with)?\s*',
+        r'^get\s+stocks?\s+(whose|where|with)?\s*',
+        r'^stocks?\s+(whose|where|with)\s*',
+    ]
+    for prefix in prefixes_to_strip:
+        query = re.sub(prefix, '', query, flags=re.IGNORECASE)
+    query = query.strip()
 
     # Helper to map operator text to symbol
     def get_operator(text):
@@ -3385,11 +3396,28 @@ def parse_natural_language_query(query: str) -> Dict[str, Any]:
         if 'equal' in text or '=' in text or 'is' in text: return '=='
         return '>' # Default
 
+    # Helper to normalize measure text
+    def normalize_measure_text(text):
+        text = text.strip()
+        # "14-day rsi" or "14 day rsi" -> "rsi 14"
+        match = re.search(r'(\d+)[- ]?day\s+([a-z]+)', text)
+        if match:
+            period = match.group(1)
+            indicator = match.group(2)
+            return f'{indicator} {period}'
+        # "daily closing price" or "closing price" -> "close"
+        text = re.sub(r'(daily\s+)?closing\s+price', 'close', text)
+        # "daily close" -> "close"
+        text = re.sub(r'daily\s+close', 'close', text)
+        # "opening price" -> "open"
+        text = re.sub(r'opening\s+price', 'open', text)
+        return text
+
     # Helper to parse measure
     def parse_measure(text):
-        text = text.strip()
+        text = normalize_measure_text(text)
         # Check for indicators with periods
-        # e.g. "sma 20", "rsi(14)"
+        # e.g. "sma 20", "rsi(14)", "rsi 14"
         
         # Regex for Indicator + Number
         match = re.search(r'([a-z]+)\s*\(?\s*(\d+)\s*\)?', text)
@@ -3397,19 +3425,73 @@ def parse_natural_language_query(query: str) -> Dict[str, Any]:
             ind_name = match.group(1)
             period = int(match.group(2))
             # Map common names
-            if ind_name in ['sma', 'ema', 'rsi', 'wma', 'atr', 'adx', 'cci', 'stoch']:
+            if ind_name in ['sma', 'ema', 'rsi', 'wma', 'atr', 'adx', 'cci', 'stoch', 'macd', 'bb']:
                 return {'type': 'indicator', 'field': f'{ind_name}_{period}', 'time_period': period}
         
         # Simple Attributes
-        if text in ['close', 'open', 'high', 'low', 'volume', 'market cap', 'cap', 'pe']:
-            field = text.replace('market cap', 'market_cap')
+        if text in ['close', 'open', 'high', 'low', 'volume', 'market cap', 'cap', 'pe', 'price']:
+            field = text.replace('market cap', 'market_cap').replace('price', 'close')
             return {'type': 'attribute', 'field': field}
             
         # Default fallback (attribute)
         return {'type': 'attribute', 'field': text}
 
-    # Split by 'and' to separate conditions
-    conditions = [c.strip() for c in re.split(r'\s+and\s+', query)]
+    # Handle "between X and Y" pattern - use non-greedy match for field
+    # Pattern: (field words) [is] between (num) and (num)
+    between_pattern = r'((?:daily\s+)?(?:closing\s+)?(?:price|close|open|high|low|volume|rsi|sma|ema)(?:\s*\d+)?)\s+(?:is\s+)?between\s+(\d+(?:\.\d+)?)\s+and\s+(\d+(?:\.\d+)?)'
+    between_matches = re.findall(between_pattern, query, re.IGNORECASE)
+    for match in between_matches:
+        field_text, low_val, high_val = match
+        measure = parse_measure(field_text)
+        node_id_1 = str(uuid4())
+        node_id_2 = str(uuid4())
+        
+        # Create two filters: field > low AND field < high
+        filters.append({
+            "id": node_id_1,
+            "type": "indicator" if measure.get('type') == 'indicator' else "price",
+            "enabled": True,
+            "field": measure.get('field', 'close'),
+            "operator": ">",
+            "value": float(low_val),
+            "timePeriod": measure.get('time_period', 14),
+            "expression": {
+                "offset": "latest",
+                "timeframe": "daily",
+                "measure": measure.get('field', 'close'),
+                "operator": ">",
+                "valueType": "number",
+                "compareToNumber": float(low_val)
+            }
+        })
+        filters.append({
+            "id": node_id_2,
+            "type": "indicator" if measure.get('type') == 'indicator' else "price",
+            "enabled": True,
+            "field": measure.get('field', 'close'),
+            "operator": "<",
+            "value": float(high_val),
+            "timePeriod": measure.get('time_period', 14),
+            "expression": {
+                "offset": "latest",
+                "timeframe": "daily",
+                "measure": measure.get('field', 'close'),
+                "operator": "<",
+                "valueType": "number",
+                "compareToNumber": float(high_val)
+            }
+        })
+    
+    # Remove "between" clauses from query before further processing
+    query = re.sub(between_pattern, '', query, flags=re.IGNORECASE)
+    # Clean up multiple spaces and trailing/leading "and"
+    query = re.sub(r'\s+', ' ', query).strip()
+    query = re.sub(r'\s+and\s*$', '', query, flags=re.IGNORECASE)
+    query = re.sub(r'^\s*and\s+', '', query, flags=re.IGNORECASE)
+    query = re.sub(r'\s+and\s+and\s+', ' and ', query, flags=re.IGNORECASE)  # Fix double "and"
+
+    # Split by 'and' to separate conditions (but not "between X and Y" which was already handled)
+    conditions = [c.strip() for c in re.split(r'\s+and\s+', query, flags=re.IGNORECASE) if c.strip()]
 
     for cond in conditions:
         try:

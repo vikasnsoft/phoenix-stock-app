@@ -37,6 +37,67 @@ export function InlineFilterEditor({
     });
   };
 
+  // Indicators that require a period parameter
+  const PERIOD_INDICATORS = [
+    "rsi",
+    "sma",
+    "ema",
+    "wma",
+    "atr",
+    "cci",
+    "adx",
+    "roc",
+    "mfi",
+    "obv",
+  ];
+  const DEFAULT_PERIODS: Record<string, number> = {
+    rsi: 14,
+    sma: 20,
+    ema: 20,
+    wma: 20,
+    atr: 14,
+    cci: 20,
+    adx: 14,
+    roc: 12,
+    mfi: 14,
+    obv: 20,
+  };
+
+  // Extract base indicator and period from measure value (e.g., "rsi_14" -> { base: "rsi", period: 14 })
+  const parseMeasure = (measure: any): { base: string; period?: number } => {
+    const val = getMeasureValue(measure);
+    const match = val.match(/^([a-z]+)_(\d+)$/);
+    if (match) {
+      return { base: match[1], period: parseInt(match[2], 10) };
+    }
+    return { base: val };
+  };
+
+  const { base: measureBase, period: measurePeriod } = parseMeasure(
+    expr.measure
+  );
+  const needsPeriod = PERIOD_INDICATORS.includes(measureBase);
+  const currentPeriod = measurePeriod ?? DEFAULT_PERIODS[measureBase] ?? 14;
+
+  const handleMeasureChange = (newBase: string) => {
+    if (PERIOD_INDICATORS.includes(newBase)) {
+      const defaultPeriod = DEFAULT_PERIODS[newBase] ?? 14;
+      handleUpdate({
+        measure: `${newBase}_${defaultPeriod}` as StockAttribute,
+      });
+    } else {
+      handleUpdate({ measure: newBase as StockAttribute });
+    }
+  };
+
+  const handlePeriodChange = (newPeriod: number) => {
+    if (needsPeriod) {
+      handleUpdate({
+        measure: `${measureBase}_${newPeriod}` as StockAttribute,
+      });
+    }
+  };
+
   const OFFSET_OPTIONS = [
     { value: "latest", label: "Latest" },
     { value: "1d_ago", label: "1 day ago" },
@@ -136,8 +197,7 @@ export function InlineFilterEditor({
 
   const isCrossover =
     expr.operator === "crosses_above" || expr.operator === "crosses_below";
-  const hasArithmetic =
-    expr.arithmeticOperator && expr.arithmeticOperator !== "";
+  const hasArithmetic = Boolean(expr.arithmeticOperator);
 
   const VALUE_TYPE_OPTIONS = [
     { value: "number", label: "Number" },
@@ -168,11 +228,22 @@ export function InlineFilterEditor({
 
       {/* Attribute Selector */}
       <InlineSelect
-        value={getMeasureValue(expr.measure)}
-        onChange={(v) => handleUpdate({ measure: v as StockAttribute })}
+        value={measureBase}
+        onChange={handleMeasureChange}
         options={ATTRIBUTE_OPTIONS}
         className="font-semibold text-slate-900"
       />
+
+      {/* Period Input (for indicators like RSI, SMA, EMA, etc.) */}
+      {needsPeriod && (
+        <NumberInput
+          value={currentPeriod}
+          onChange={handlePeriodChange}
+          className="w-16"
+          min={1}
+          max={200}
+        />
+      )}
 
       {/* Arithmetic Operation (optional) */}
       <InlineSelect
