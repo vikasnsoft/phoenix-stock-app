@@ -1342,6 +1342,31 @@ def _scan_stocks_core(
 
     matched_stocks = []
     failed_stocks = []
+
+    def _collect_timeframes_from_ast(node: Any, timeframes: set) -> None:
+        if not isinstance(node, dict):
+            return
+        tf = node.get('timeframe')
+        if isinstance(tf, str) and tf:
+            timeframes.add(tf)
+        node_type = node.get('type')
+        if node_type == 'binary':
+            _collect_timeframes_from_ast(node.get('left'), timeframes)
+            _collect_timeframes_from_ast(node.get('right'), timeframes)
+            return
+        if node_type == 'unary':
+            _collect_timeframes_from_ast(node.get('operand'), timeframes)
+            return
+        if node_type == 'function':
+            args = node.get('args') or []
+            for arg in args:
+                _collect_timeframes_from_ast(arg, timeframes)
+            return
+        if node_type == 'attribute':
+            field = node.get('field')
+            if isinstance(field, dict):
+                _collect_timeframes_from_ast(field, timeframes)
+            return
     
     for symbol in symbols:
         try:
@@ -1360,6 +1385,8 @@ def _scan_stocks_core(
                 if isinstance(f.get('value'), dict):
                      if 'timeframe' in f['value']:
                          required_timeframes.add(f['value']['timeframe'])
+                if isinstance(f.get('expression'), dict):
+                    _collect_timeframes_from_ast(f.get('expression'), required_timeframes)
 
             data_frames = {}
             error_in_fetch = False
@@ -1899,7 +1926,7 @@ def evaluate_ast(node: Dict[str, Any], data_frames: Dict[str, pd.DataFrame], idx
         
     elif node_type == 'function':
         name = node.get('name', '').upper()
-        args = [evaluate_ast(arg, df, idx) for arg in node.get('args', [])]
+        args = [evaluate_ast(arg, data_frames, idx) for arg in node.get('args', [])]
         
         if name == 'ABS': return abs(args[0])
         if name == 'MIN': return min(args)
