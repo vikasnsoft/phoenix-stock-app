@@ -33,6 +33,7 @@ import {
   Save,
   Database,
   Sprout,
+  Bell,
   ChevronDown,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -44,6 +45,7 @@ const mainNavItems = [
   { href: "/watchlists", label: "Watchlists", icon: List },
   { href: "/scans", label: "Scan Builder", icon: Target },
   { href: "/saved-scans", label: "Saved Scans", icon: Save },
+  { href: "/alerts", label: "Alerts", icon: Bell },
 ];
 
 const adminNavItems = [
