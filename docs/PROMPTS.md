@@ -399,11 +399,7 @@ Add helper:
 
 ```typescript
 isMarketOpen(): boolean {
-  const now = new Date();
-  const day = now.getUTCDay();
-  if (day === 0 || day === 6) return false; // Weekend
-  const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
-  return mins >= 870 && mins < 1260; // 14:30-21:00 UTC (US market)
+  // Use MARKET_TIMEZONE (default: America/New_York) and check 9:30-16:00 local time.
 }
 ```
 
@@ -416,6 +412,8 @@ isMarketOpen(): boolean {
 ```
 
 Add Aroon and CCI indicators to MCP server.
+
+Note: These were implemented during Phase 0 (MCP Server Indicators).
 
 Reference: @docs/IMPLEMENTATION_PLAN.md (Section 4.3)
 File: @apps/mcp-server/server.py

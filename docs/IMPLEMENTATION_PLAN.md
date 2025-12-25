@@ -558,6 +558,8 @@ apps/web/src/app/discover/
 **App**: API, MCP Server  
 **Estimated Time**: 4-6 hours
 
+**Status**: 🚧 In Progress (Started December 25, 2025)
+
 #### Implementation Steps
 
 1. **API: Update Market Data Service**
@@ -582,6 +584,8 @@ apps/web/src/app/discover/
 **Priority**: 🟡 High  
 **App**: API  
 **Estimated Time**: 3-4 hours
+
+**Status**: 🚧 In Progress (Started December 25, 2025)
 
 #### Implementation Steps
 
