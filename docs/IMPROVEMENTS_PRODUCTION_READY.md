@@ -14,18 +14,18 @@ This document provides production-ready implementation specifications aligned wi
 
 ## 1. PRD Alignment Matrix
 
-| PRD Requirement                        | Status        | Gap                | Priority |
-| -------------------------------------- | ------------- | ------------------ | -------- |
-| FR-FE-1 to FR-FE-7: Filter Engine Core | ✅ Done       | -                  | -        |
-| FR-FE-8: Min/Max Functions             | ⚠️ Partial    | Need UI            | Medium   |
-| FR-FE-9: Fundamental Filters           | ⚠️ Backend    | Need web UI        | Medium   |
-| FR-SM-4: Clone/Fork Scan               | ❌ Missing    | Full impl          | **High** |
-| FR-SM-6: Tag Scans                     | ❌ Missing    | Schema + UI        | Medium   |
-| FR-ED-2: Multi-Timeframe               | ⚠️ Daily only | Need 15-min/weekly | **High** |
-| FR-ED-4: Intraday Data                 | ❌ Missing    | Full impl          | **High** |
-| FR-DC-1 to FR-DC-6: Discovery          | ❌ Missing    | Full impl          | **High** |
-| FR-AL-1 to FR-AL-6: Alerts             | ⚠️ Partial    | Need full impl     | **High** |
-| Authentication                         | ❌ Missing    | Full impl          | **High** |
+| PRD Requirement                        | Status        | Gap                                                 | Priority |
+| -------------------------------------- | ------------- | --------------------------------------------------- | -------- |
+| FR-FE-1 to FR-FE-7: Filter Engine Core | ✅ Done       | -                                                   | -        |
+| FR-FE-8: Min/Max Functions             | ⚠️ Partial    | Need UI                                             | Medium   |
+| FR-FE-9: Fundamental Filters           | ⚠️ Backend    | Need web UI                                         | Medium   |
+| FR-SM-4: Clone/Fork Scan               | ✅ Done       | -                                                   | -        |
+| FR-SM-6: Tag Scans                     | ⚠️ Partial    | Missing UI to manage tags/publish scans             | Medium   |
+| FR-ED-2: Multi-Timeframe               | ⚠️ Daily only | Need 15-min/weekly                                  | **High** |
+| FR-ED-4: Intraday Data                 | ❌ Missing    | Full impl                                           | **High** |
+| FR-DC-1 to FR-DC-6: Discovery          | ⚠️ Partial    | Missing featured/categories + pagination polish     | **High** |
+| FR-AL-1 to FR-AL-6: Alerts             | ⚠️ Partial    | Missing INDICATOR_CROSS + EOD schedule + more tests | **High** |
+| Authentication                         | ✅ Done       | -                                                   | -        |
 
 ---
 
@@ -404,31 +404,31 @@ def evaluate_fundamental_filter(symbol: str, filter_def: dict) -> bool:
 
 ### Phase 1 (Week 1-2): Core Infrastructure
 
-1. ✅ Authentication system
-2. ✅ Rate limiting
-3. ✅ Discovery schema updates
-4. ✅ Dashboard home page
+1.  ✅ Authentication system
+2.  ✅ Rate limiting
+3.  ✅ Discovery schema updates
+4.  ✅ Dashboard home page
 
 ### Phase 2 (Week 3-4): Alerts & Notifications
 
-1. ✅ Alert evaluation worker (production)
-2. ✅ Alert history tracking
-3. ✅ Alerts management UI
-4. ✅ Email notification integration
+1.  ✅ Alert evaluation worker (production)
+2.  ✅ Alert history tracking
+3.  ✅ Alerts management UI
+4.  ✅ Email notification integration
 
 ### Phase 3 (Week 5-6): Discovery & Community
 
-1. ✅ Discovery service
-2. ✅ Clone/Fork functionality
-3. ✅ Ratings system
-4. ✅ Discover page UI
+1.  ✅ Discovery service
+2.  ✅ Clone/Fork functionality
+3.  ✅ Ratings system
+4.  ✅ Discover page UI
 
 ### Phase 4 (Week 7-8): Multi-Timeframe & Polish
 
-1. ✅ Multi-timeframe support
-2. ✅ Intraday data sync (15-min)
-3. ✅ Additional indicators (Aroon, CCI)
-4. ✅ Performance optimization
+1.  ⬜ Multi-timeframe support
+2.  ⬜ Intraday data sync (15-min)
+3.  ⬜ Additional indicators (Aroon, CCI)
+4.  ⬜ Performance optimization
 
 ---
 

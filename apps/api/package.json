@@ -12,7 +12,13 @@
     "mcp:regression": "python ../mcp-server/regression_compare_providers.py",
     "test": "jest"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "dependencies": {
+    "@bull-board/api": "^6.15.0",
+    "@bull-board/express": "^6.15.0",
+    "@bull-board/nestjs": "^6.15.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^10.4.20",
     "@nestjs/core": "^10.0.0",

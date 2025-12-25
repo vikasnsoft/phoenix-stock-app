@@ -1,9 +1,46 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateAlertDto } from './dto/create-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
+
+interface CreateAlertParams {
+  readonly userId: string;
+  readonly dto: CreateAlertDto;
+}
+
+interface FindAllAlertsParams {
+  readonly userId: string;
+}
+
+interface FindOneAlertParams {
+  readonly userId: string;
+  readonly id: string;
+}
+
+interface UpdateAlertParams {
+  readonly userId: string;
+  readonly id: string;
+  readonly dto: UpdateAlertDto;
+}
+
+interface RemoveAlertParams {
+  readonly userId: string;
+  readonly id: string;
+}
+
+interface GetAlertHistoryParams {
+  readonly userId: string;
+  readonly alertId: string;
+  readonly skip: number;
+  readonly take: number;
+}
+
+interface TriggerEvaluationParams {
+  readonly userId: string;
+}
 
 @Injectable()
 export class AlertsService {
@@ -12,61 +49,73 @@ export class AlertsService {
     @InjectQueue('alert-evaluation') private readonly alertQueue: Queue
   ) { }
 
-  private async getDefaultUser() {
-    const user = await this.prisma.user.findFirst();
-    if (!user) throw new NotFoundException('No user found');
-    return user;
-  }
-
-  async create(createDto: CreateAlertDto) {
-    const user = await this.getDefaultUser();
-
-    // Explicitly cast the condition to InputJsonValue
-    const data: any = {
-      ...createDto,
-      userId: user.id,
-      condition: createDto.condition,
-      status: 'ACTIVE'
-    };
-
+  public async create(params: CreateAlertParams) {
     const alert = await this.prisma.alert.create({
-      data
+      data: {
+        ...params.dto,
+        userId: params.userId,
+        condition: params.dto.condition as Prisma.InputJsonValue,
+        status: 'ACTIVE',
+      },
     });
-
     return alert;
   }
 
-  async findAll() {
+  public async findAll(params: FindAllAlertsParams) {
     return this.prisma.alert.findMany({
-      orderBy: { createdAt: 'desc' }
+      where: { userId: params.userId },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
-    const alert = await this.prisma.alert.findUnique({ where: { id } });
-    if (!alert) throw new NotFoundException(`Alert ${id} not found`);
+  public async findOne(params: FindOneAlertParams) {
+    const alert = await this.prisma.alert.findFirst({
+      where: { id: params.id, userId: params.userId },
+    });
+    if (!alert) {
+      throw new NotFoundException(`Alert ${params.id} not found`);
+    }
     return alert;
   }
 
-  async update(id: string, updateDto: UpdateAlertDto) {
-    await this.findOne(id);
-    const data: any = {
-      ...updateDto,
-      condition: updateDto.condition
+  public async getHistory(params: GetAlertHistoryParams) {
+    await this.findOne({ userId: params.userId, id: params.alertId });
+    const history = await this.prisma.alertHistory.findMany({
+      where: { alertId: params.alertId },
+      orderBy: { triggeredAt: 'desc' },
+      skip: params.skip,
+      take: params.take,
+    });
+    const total = await this.prisma.alertHistory.count({
+      where: { alertId: params.alertId },
+    });
+    return {
+      history,
+      total,
+      skip: params.skip,
+      take: params.take,
     };
+  }
+
+  public async update(params: UpdateAlertParams) {
+    await this.findOne({ userId: params.userId, id: params.id });
     return this.prisma.alert.update({
-      where: { id },
-      data
+      where: { id: params.id },
+      data: {
+        ...params.dto,
+        condition: params.dto.condition
+          ? (params.dto.condition as Prisma.InputJsonValue)
+          : undefined,
+      },
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.alert.delete({ where: { id } });
+  public async remove(params: RemoveAlertParams) {
+    await this.findOne({ userId: params.userId, id: params.id });
+    return this.prisma.alert.delete({ where: { id: params.id } });
   }
 
-  async triggerEvaluation() {
-    // Manually trigger evaluation job
+  public async triggerEvaluation(_params: TriggerEvaluationParams) {
     await this.alertQueue.add('evaluate-all', {});
     return { message: 'Alert evaluation triggered' };
   }

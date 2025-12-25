@@ -55,7 +55,7 @@ export default function DashboardPage() {
           title="Discover"
           description="Explore public scans"
           icon={<TrendingUp className="h-5 w-5" />}
-          href="/screener"
+          href="/discover"
         />
       </div>
 
@@ -225,8 +225,8 @@ function AlertsWidget() {
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <Bell className="h-10 w-10 text-muted-foreground mb-2" />
         <p className="text-muted-foreground">No active alerts</p>
-        <Button variant="link" size="sm" className="mt-2">
-          Create alert
+        <Button variant="link" size="sm" className="mt-2" asChild>
+          <Link href="/alerts">Create alert</Link>
         </Button>
       </div>
     );

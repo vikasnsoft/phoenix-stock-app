@@ -193,48 +193,48 @@ Chartink Example:
 
 ### 2.1 Web Application Gaps
 
-| Feature                  | PRD      | Status                    | Gap                        |
-| ------------------------ | -------- | ------------------------- | -------------------------- |
-| **Home Dashboard**       | Required | ❌ Placeholder page       | Full rebuild needed        |
-| **Scan Builder**         | Required | ⚠️ Functional but limited | Missing features above     |
-| **Saved Scans Page**     | Required | ✅ Exists                 | Minor improvements         |
-| **Watchlists Page**      | Required | ✅ Exists                 | OK                         |
-| **Alerts Page**          | Required | ❌ Missing                | **HIGH PRIORITY**          |
-| **Discover Page**        | Required | ❌ Missing                | **HIGH PRIORITY**          |
-| **Authentication UI**    | Required | ❌ Missing                | **HIGH PRIORITY**          |
-| **Navigation/Sidebar**   | Required | ⚠️ Basic navbar           | Need sidebar               |
-| **Result Enrichment**    | Required | ⚠️ Basic table            | Need sparklines, more data |
-| **Live Preview**         | Required | ❌ Missing                | Plain-English preview      |
-| **Educational Tooltips** | Required | ❌ Missing                | "?" icons, explanations    |
-| **Loading States**       | Required | ⚠️ Basic                  | Need skeletons             |
-| **Error States**         | Required | ⚠️ Toast only             | Need inline errors         |
+| Feature                  | PRD      | Status              | Gap                        |
+| ------------------------ | -------- | ------------------- | -------------------------- |
+| **Home Dashboard**       | Required | ❌ Placeholder page | Full rebuild needed        |
+| **Scan Builder**         | Required | ✅ Functional       | Missing features above     |
+| **Saved Scans Page**     | Required | ✅ Exists           | Minor improvements         |
+| **Watchlists Page**      | Required | ✅ Exists           | OK                         |
+| **Alerts Page**          | Required | ❌ Missing          | **HIGH PRIORITY**          |
+| **Discover Page**        | Required | ❌ Missing          | **HIGH PRIORITY**          |
+| **Authentication UI**    | Required | ✅ Implemented      | ✅ None                    |
+| **Navigation/Sidebar**   | Required | ⚠️ Basic navbar     | Need sidebar               |
+| **Result Enrichment**    | Required | ⚠️ Basic table      | Need sparklines, more data |
+| **Live Preview**         | Required | ❌ Missing          | Plain-English preview      |
+| **Educational Tooltips** | Required | ❌ Missing          | "?" icons, explanations    |
+| **Loading States**       | Required | ⚠️ Basic            | Need skeletons             |
+| **Error States**         | Required | ⚠️ Toast only       | Need inline errors         |
 
 ### 2.2 API Application Gaps
 
-| Feature                | PRD      | Status        | Gap                     |
-| ---------------------- | -------- | ------------- | ----------------------- |
-| **Authentication**     | Required | ❌ Missing    | JWT auth system         |
-| **Rate Limiting**      | Required | ❌ Missing    | Throttler config        |
-| **Scans Module**       | Required | ✅ Exists     | OK                      |
-| **Saved Scans Module** | Required | ✅ Exists     | Need clone, tags        |
-| **Watchlists Module**  | Required | ✅ Exists     | OK                      |
-| **Alerts Module**      | Required | ⚠️ CRUD only  | Need evaluation worker  |
-| **Discovery Module**   | Required | ❌ Missing    | **HIGH PRIORITY**       |
-| **Market Data Module** | Required | ✅ Exists     | OK                      |
-| **Multi-timeframe**    | Required | ⚠️ Daily only | Need 15min, weekly      |
-| **Segment Filtering**  | Required | ⚠️ Basic      | Need F&O, Nifty indices |
+| Feature                | PRD      | Status         | Gap                     |
+| ---------------------- | -------- | -------------- | ----------------------- |
+| **Authentication**     | Required | ✅ Implemented | ✅ None                 |
+| **Rate Limiting**      | Required | ✅ Implemented | ✅ None                 |
+| **Scans Module**       | Required | ✅ Exists      | OK                      |
+| **Saved Scans Module** | Required | ✅ Exists      | Need clone, tags        |
+| **Watchlists Module**  | Required | ✅ Exists      | OK                      |
+| **Alerts Module**      | Required | ⚠️ CRUD only   | Need evaluation worker  |
+| **Discovery Module**   | Required | ❌ Missing     | **HIGH PRIORITY**       |
+| **Market Data Module** | Required | ✅ Exists      | OK                      |
+| **Multi-timeframe**    | Required | ⚠️ Daily only  | Need 15min, weekly      |
+| **Segment Filtering**  | Required | ⚠️ Basic       | Need F&O, Nifty indices |
 
 ### 2.3 MCP Server Gaps
 
-| Feature                  | PRD      | Status            | Gap                |
-| ------------------------ | -------- | ----------------- | ------------------ |
-| **Core Indicators**      | 12+      | ⚠️ 10 implemented | Missing Aroon, CCI |
-| **Crossover Logic**      | Required | ✅ Implemented    | OK                 |
-| **Min/Max Functions**    | Required | ✅ Implemented    | OK                 |
-| **Fundamental Filters**  | Required | ⚠️ Partial        | Need full metrics  |
-| **Multi-timeframe**      | Required | ✅ Implemented    | OK                 |
-| **Candlestick Patterns** | Optional | ✅ Implemented    | OK                 |
-| **Natural Language**     | Optional | ✅ Implemented    | OK                 |
+| Feature                  | PRD      | Status         | Gap               |
+| ------------------------ | -------- | -------------- | ----------------- |
+| **Core Indicators**      | 12+      | ✅ Implemented | ✅ None           |
+| **Crossover Logic**      | Required | ✅ Implemented | ✅ None           |
+| **Min/Max Functions**    | Required | ✅ Implemented | ✅ None           |
+| **Fundamental Filters**  | Required | ⚠️ Partial     | Need full metrics |
+| **Multi-timeframe**      | Required | ✅ Implemented | ✅ None           |
+| **Candlestick Patterns** | Optional | ✅ Implemented | ✅ None           |
+| **Natural Language**     | Optional | ✅ Implemented | ✅ None           |
 
 ---
 
@@ -264,7 +264,7 @@ These should work in our system:
    Latest daily RSI(14) crossed above 70
    ```
 
-   - Status: ❌ Can't create (no crossover in UI)
+   - Status: ✅ Can create
 
 2. **Gap Up 3%**
 
@@ -272,7 +272,7 @@ These should work in our system:
    Latest daily Open > (1 day ago Close * 1.03)
    ```
 
-   - Status: ❌ Can't create (no arithmetic in UI)
+   - Status: ✅ Can create
 
 3. **52-Week High**
 
@@ -280,7 +280,7 @@ These should work in our system:
    Latest daily High = Max(High, 252)
    ```
 
-   - Status: ❌ Can't create (no Min/Max in UI)
+   - Status: ✅ Can create
 
 4. **Golden Cross (SMA50 > SMA200)**
 
@@ -288,13 +288,13 @@ These should work in our system:
    Latest daily SMA(close, 50) crossed above SMA(close, 200)
    ```
 
-   - Status: ❌ Can't create (no crossover + no indicator params)
+   - Status: ✅ Can create
 
 5. **Close > SMA20**
    ```
    Latest daily Close > SMA(close, 20)
    ```
-   - Status: ⚠️ Partially works (no indicator params visible)
+   - Status: ✅ Can create
 
 ---
 
@@ -339,15 +339,15 @@ These should work in our system:
 
 ### `inline-filter-editor.tsx` Updates
 
-- [ ] Add crossover operators to `OPERATOR_OPTIONS`
-- [ ] Add all indicators to `ATTRIBUTE_OPTIONS`:
-  - [ ] Bollinger Bands (bb_upper, bb_middle, bb_lower)
-  - [ ] ADX, ATR, Supertrend
-  - [ ] VWAP, Stochastic
-  - [ ] Aroon, CCI
+- [x] Add crossover operators to `OPERATOR_OPTIONS`
+- [x] Add all indicators to `ATTRIBUTE_OPTIONS`:
+  - [x] Bollinger Bands (bb_upper, bb_middle, bb_lower)
+  - [x] ADX, ATR, Supertrend
+  - [x] VWAP, Stochastic
+  - [x] Aroon, CCI
 - [ ] Add indicator parameter configuration
-- [ ] Add arithmetic operator selector
-- [ ] Add arithmetic value input
+- [x] Add arithmetic operator selector
+- [x] Add arithmetic value input
 - [ ] Show plain-English preview of filter
 
 ### New Components Needed

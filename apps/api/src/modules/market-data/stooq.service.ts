@@ -25,7 +25,7 @@ export class StooqService {
     const stooqSymbol = this.buildStooqSymbol(symbol);
     const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(stooqSymbol)}&i=d`;
     try {
-      const response = await axios.get<string>(url, { responseType: 'text', timeout: 15000 });
+      const response = await axios.get<string>(url, { responseType: 'text', timeout: 30000 });
       const records = this.parseCsv(response.data);
       const filtered = this.filterByRange(records, from, to);
       if (filtered.length === 0) {

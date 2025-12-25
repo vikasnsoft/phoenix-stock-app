@@ -1,10 +1,10 @@
-import { FilterConditionDto } from './dto/filter-config.dto';
+import { FilterConditionDto, FilterType } from './dto/filter-config.dto';
 import { mapFilters } from './filter-mapper';
 
 describe('filter-mapper', () => {
   it('should map basic price filter fields to MCP payload', () => {
     const filter: FilterConditionDto = {
-      type: 'price',
+      type: FilterType.PRICE,
       field: 'close',
       operator: 'gt',
       value: 100
@@ -24,7 +24,7 @@ describe('filter-mapper', () => {
 
   it('should include pattern and timeframe for pattern filters', () => {
     const filter: FilterConditionDto = {
-      type: 'pattern',
+      type: FilterType.PATTERN,
       operator: 'eq',
       pattern: 'hammer',
       timeframe: 'daily'
@@ -44,14 +44,14 @@ describe('filter-mapper', () => {
 
   it('should map nested filters recursively', () => {
     const childFilter: FilterConditionDto = {
-      type: 'price',
+      type: FilterType.PRICE,
       field: 'close',
       operator: 'gt',
       value: 0
     };
 
     const parentFilter: FilterConditionDto = {
-      type: 'price',
+      type: FilterType.PRICE,
       field: 'close',
       operator: 'gt',
       value: 0,

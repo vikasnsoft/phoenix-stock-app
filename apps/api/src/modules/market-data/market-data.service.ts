@@ -45,17 +45,7 @@ export class MarketDataService {
     });
     const result = dbCandles.length > 0
       ? this.mapCandlesToFinnhub(dbCandles)
-      : { c: [], h: [], l: [], o: [], v: [], t: [], s: 'no_data' };
-    if (result.s !== 'ok' && resolution === 'D') {
-      const stooqCandles = await this.stooqService.getDailyCandles(symbol, from, to);
-      if (stooqCandles.s === 'ok' && stooqCandles.c.length > 0) {
-        await this.storeCandles(symbol, resolution, stooqCandles);
-        await this.redisCacheService.setJson(cacheKey, stooqCandles, {
-          ttlSeconds: this.getCandleCacheTtlSeconds(resolution),
-        });
-        return stooqCandles;
-      }
-    }
+      : { c: [], h: [], l: [], o: [], v: [], t: [], s: 'no_data' as const };
     await this.redisCacheService.setJson(cacheKey, result, {
       ttlSeconds: this.getCandleCacheTtlSeconds(resolution),
     });
@@ -81,9 +71,9 @@ export class MarketDataService {
       return cached.metric;
     }
 
-    // If not found, return null (do not fetch live to avoid rate limits during scan)
+    // If not found, return empty object (do not fetch live to avoid rate limits during scan)
     this.logger.warn(`Financials for ${symbol} missing in DB (Offline Mode)`);
-    return null;
+    return {};
   }
 
   /**
@@ -135,6 +125,7 @@ export class MarketDataService {
       });
       return result;
     }
+    // For daily resolution, use Stooq only (no Finnhub to avoid rate limits)
     if (resolution === 'D') {
       const stooqCandles = await this.stooqService.getDailyCandles(symbol, from, to);
       if (stooqCandles.s === 'ok' && stooqCandles.c.length > 0) {
@@ -144,13 +135,15 @@ export class MarketDataService {
         });
         return stooqCandles;
       }
+      // Return no_data instead of falling back to Finnhub for daily
+      this.logger.warn(`No daily data available for ${symbol} from Stooq`);
+      return { c: [], h: [], l: [], o: [], v: [], t: [], s: 'no_data' };
     }
+    // For intraday, fall back to Finnhub
     this.logger.log(`Data missing for ${symbol} in DB. Fetching from Finnhub...`);
-    // 2. Fetch from Finnhub (fallback)
     const apiData = await this.finnhub.getCandles(symbol, resolution, from, to);
 
     if (apiData.s === 'ok' && apiData.c && apiData.c.length > 0) {
-      // 3. Store in DB
       await this.storeCandles(symbol, resolution, apiData);
       await this.redisCacheService.setJson(cacheKey, apiData, {
         ttlSeconds: this.getCandleCacheTtlSeconds(resolution),

@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../database/prisma.service';
 import { EodIngestJob } from './workers/eod-ingest.worker';
 import { SymbolSyncJob } from './workers/symbol-sync.worker';
+import { MetricsRefreshJob } from './models/metrics-refresh-job.type';
 
 @Injectable()
 export class IngestionScheduler {
@@ -13,6 +14,7 @@ export class IngestionScheduler {
   constructor(
     @InjectQueue('eod-ingest') private eodQueue: Queue<EodIngestJob>,
     @InjectQueue('symbol-sync') private symbolSyncQueue: Queue<SymbolSyncJob>,
+    @InjectQueue('metrics-refresh') private metricsQueue: Queue<MetricsRefreshJob>,
     private readonly prisma: PrismaService,
   ) { }
 
@@ -125,5 +127,56 @@ export class IngestionScheduler {
     );
 
     this.logger.log(`✓ Queued symbol sync for ${exchange}`);
+  }
+
+  /**
+   * Daily metrics refresh - runs at 7 PM EST (after EOD ingest)
+   * Updates financial metrics for all active symbols via FMP batch API
+   */
+  @Cron('0 19 * * 1-5', { timeZone: 'America/New_York' }) // 7 PM EST, weekdays only
+  async scheduleMetricsRefresh() {
+    this.logger.log('Starting scheduled metrics refresh...');
+
+    try {
+      await this.metricsQueue.add(
+        'daily-metrics-refresh',
+        {
+          take: 2000,
+          batchSize: 50,
+          delayMs: 1000,
+        },
+        {
+          attempts: 2,
+          backoff: {
+            type: 'exponential' as const,
+            delay: 5000,
+          },
+        }
+      );
+
+      this.logger.log('✓ Queued daily metrics refresh job');
+    } catch (error) {
+      this.logger.error('Failed to schedule metrics refresh:', error);
+    }
+  }
+
+  /**
+   * Manual trigger for metrics refresh
+   */
+  async triggerMetricsRefresh(params?: { skip?: number; take?: number }) {
+    this.logger.log('Manually triggering metrics refresh...');
+
+    await this.metricsQueue.add(
+      'manual-metrics-refresh',
+      {
+        skip: params?.skip ?? 0,
+        take: params?.take ?? 1000,
+        batchSize: 50,
+        delayMs: 1000,
+      },
+      { attempts: 2 }
+    );
+
+    this.logger.log('✓ Queued manual metrics refresh job');
   }
 }

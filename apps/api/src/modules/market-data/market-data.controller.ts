@@ -53,9 +53,10 @@ export class MarketDataController {
   @ApiResponse({ status: 200, description: 'Financial metrics' })
   async getBasicFinancials(
     @Query('symbol') symbol: string,
-  ): Promise<any> {
+  ): Promise<{ metric: any }> {
     this.logger.debug(`Fetching financials for ${symbol}`);
-    return this.marketDataService.getBasicFinancials(symbol);
+    const metric = await this.marketDataService.getBasicFinancials(symbol);
+    return { metric };
   }
 
   @Post('sync')
