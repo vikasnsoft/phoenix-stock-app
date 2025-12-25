@@ -2,6 +2,16 @@
 
 ## Overview
 
+## Implementation Status
+
+| Phase                             | Status      |
+| --------------------------------- | ----------- |
+| Phase 0: Filter UI Gaps           | ✅ Complete |
+| Phase 1: Core Infrastructure      | ✅ Complete |
+| Phase 2: Alerts & Notifications   | ⬜ Pending  |
+| Phase 3: Discovery & Community    | ⬜ Pending  |
+| Phase 4: Multi-Timeframe & Polish | ⬜ Pending  |
+
 ### Problem Statement
 
 Active traders and investors in the Indian equity market need to efficiently filter thousands of stocks to find actionable opportunities based on technical and fundamental criteria. Existing solutions like Chartink offer powerful filter engines but suffer from steep learning curves, confusing syntax, delayed data during market hours, and limited onboarding—causing many users to abandon custom scan creation in favor of copying pre-built scans without understanding the underlying logic.
