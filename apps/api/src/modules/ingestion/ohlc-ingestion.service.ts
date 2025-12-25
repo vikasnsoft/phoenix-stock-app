@@ -19,6 +19,7 @@ export interface IngestSymbolRangeResult {
 @Injectable()
 export class OhlcIngestionService {
   private readonly logger = new Logger(OhlcIngestionService.name);
+  private readonly secondsInDay = 24 * 60 * 60;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -28,8 +29,7 @@ export class OhlcIngestionService {
 
   async ingestDataForSymbol(symbol: string, resolution: string): Promise<IngestSymbolRangeResult> {
     const to = Math.floor(Date.now() / 1000);
-    // Fetch last 24 hours for intraday
-    const from = to - (24 * 60 * 60);
+    const from = to - this.getLookbackSecondsForResolution(resolution);
     // Map human readable resolution to API resolution if needed, or pass through
     // For now assuming resolution is passed as API compatible or mapping handled inside ingestSymbolRange?
     // The previous implementation expects Finnhub resolutions ('D', '60', etc) but mapResolutionToTimeframe handles both?
@@ -42,12 +42,27 @@ export class OhlcIngestionService {
     if (resolution === '1min') apiResolution = '1';
     if (resolution === '60min') apiResolution = '60';
     if (resolution === 'daily') apiResolution = 'D';
+    if (resolution === 'weekly') apiResolution = 'W';
+    if (resolution === 'monthly') apiResolution = 'M';
     return this.ingestSymbolRange({
       symbol,
       resolution: apiResolution,
       from,
       to
     });
+  }
+
+  private getLookbackSecondsForResolution(resolution: string): number {
+    if (resolution === 'weekly') {
+      return 5 * 365 * this.secondsInDay;
+    }
+    if (resolution === 'monthly') {
+      return 10 * 365 * this.secondsInDay;
+    }
+    if (resolution === 'daily') {
+      return 365 * this.secondsInDay;
+    }
+    return this.secondsInDay;
   }
 
   async ingestSymbolRange(params: IngestSymbolRangeParams): Promise<IngestSymbolRangeResult> {
