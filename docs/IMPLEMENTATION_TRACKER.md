@@ -1,19 +1,19 @@
 # Stock Scanner - Implementation Tracker
 
-> **Last Updated**: December 23, 2025  
-> **Total Progress**: 80% (16/20 tasks)
+> **Last Updated**: December 25, 2025  
+> **Total Progress**: 85% (17/20 tasks)
 
 ---
 
 ## Quick Status
 
-| Phase                             | Status      | Progress | Tasks                                           |
-| --------------------------------- | ----------- | -------- | ----------------------------------------------- |
-| Phase 0: Filter UI Gaps           | ✅ Complete | 4/4      | Crossovers, Indicators, Arithmetic, MCP         |
-| Phase 1: Core Infrastructure      | ✅ Complete | 4/4      | Auth ✅, Rate Limit ✅, Schema ✅, Dashboard ✅ |
-| Phase 2: Alerts & Notifications   | ✅ Complete | 4/4      | Worker ✅, History ✅, UI ✅, Email ✅          |
-| Phase 3: Discovery & Community    | ✅ Complete | 4/4      | Service ✅, Clone ✅, Ratings ✅, UI ✅         |
-| Phase 4: Multi-Timeframe & Polish | ⬜ Pending  | 0/4      | Timeframe, Intraday, Indicators, Perf           |
+| Phase                             | Status      | Progress | Tasks                                             |
+| --------------------------------- | ----------- | -------- | ------------------------------------------------- |
+| Phase 0: Filter UI Gaps           | ✅ Complete | 4/4      | Crossovers, Indicators, Arithmetic, MCP           |
+| Phase 1: Core Infrastructure      | ✅ Complete | 4/4      | Auth ✅, Rate Limit ✅, Schema ✅, Dashboard ✅   |
+| Phase 2: Alerts & Notifications   | ✅ Complete | 4/4      | Worker ✅, History ✅, UI ✅, Email ✅            |
+| Phase 3: Discovery & Community    | ✅ Complete | 4/4      | Service ✅, Clone ✅, Ratings ✅, UI ✅           |
+| Phase 4: Multi-Timeframe & Polish | 🚧 In Prog  | 1/4      | Timeframe 🚧, Intraday 🚧, Indicators ✅, Perf ⬜ |
 
 ---
 
@@ -449,78 +449,82 @@ Page: /discover
 
 ### 4.1 Multi-Timeframe Support
 
-- **Status**: ⬜ Pending
+- **Status**: 🚧 In Progress
 - **Priority**: 🟡 High
 - **App**: API, MCP
 - **Estimated**: 4-6 hours
 - **Actual**: -
-- **Started**: -
+- **Started**: December 25, 2025
 - **Completed**: -
 
 **Subtasks:**
 
-- [ ] Add getCandlesMultiTimeframe() to MarketDataService
-- [ ] Add timeframe to filter config
-- [ ] Update ScansService to handle timeframes
-- [ ] Update MCP scan logic for timeframes
+- [x] Add getCandlesMultiTimeframe() to MarketDataService
+- [x] Add timeframe to filter config
+- [x] Update ScansService to handle timeframes
+- [x] Update MCP scan logic for timeframes
 - [ ] Test multi-timeframe scans
 
 **Notes:**
 
 ```
--
+MCP scan_stocks now collects required timeframes from AST expression nodes.
+MCP evaluate_ast supports timeframe-aware attribute/indicator evaluation.
+MarketDataService: getCandlesMultiTimeframe()
 ```
 
 ---
 
 ### 4.2 Intraday Data Sync (15-min)
 
-- **Status**: ⬜ Pending
+- **Status**: 🚧 In Progress
 - **Priority**: 🟡 High
 - **App**: API
 - **Estimated**: 3-4 hours
 - **Actual**: -
-- **Started**: -
+- **Started**: December 25, 2025
 - **Completed**: -
 
 **Subtasks:**
 
-- [ ] Create IntradayIngestionWorker
-- [ ] Implement isMarketOpen() helper
-- [ ] Schedule 15-min candle sync
-- [ ] Store intraday candles
+- [x] Create IntradayIngestionWorker
+- [x] Implement isMarketOpen() helper
+- [x] Schedule 15-min candle sync
+- [x] Store intraday candles
 - [ ] Test during market hours
 
 **Notes:**
 
 ```
--
+Scheduler: cron every 15 minutes (America/New_York) to enqueue intraday-refresh batch jobs.
+Worker: batches over active symbols (skip/take) and ingests 15min candles with delay throttling.
+Env: MARKET_TIMEZONE, INTRADAY_REFRESH_BATCH_SIZE, INTRADAY_REFRESH_DELAY_MS, INTRADAY_REFRESH_MAX_BATCHES
 ```
 
 ---
 
 ### 4.3 Additional Indicators (Aroon, CCI)
 
-- **Status**: ⬜ Pending
+- **Status**: ✅ Complete
 - **Priority**: 🟢 Medium
 - **App**: MCP Server
 - **Estimated**: 2-3 hours
 - **Actual**: -
-- **Started**: -
-- **Completed**: -
+- **Started**: December 22, 2025
+- **Completed**: December 22, 2025
 
 **Subtasks:**
 
-- [ ] Implement calculate_aroon()
-- [ ] Implement calculate_cci()
-- [ ] Register in filter engine
-- [ ] Update indicator documentation
-- [ ] Test indicator calculations
+- [x] Implement calculate_aroon()
+- [x] Implement calculate_cci()
+- [x] Register in filter engine
+- [x] Update indicator documentation
+- [x] Test indicator calculations
 
 **Notes:**
 
 ```
--
+Implemented during Phase 0 (MCP Server Indicators).
 ```
 
 ---

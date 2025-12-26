@@ -153,6 +153,43 @@ export class MarketDataService {
     return apiData;
   }
 
+  public async getCandlesMultiTimeframe(params: {
+    readonly symbol: string;
+    readonly timeframes: string[];
+    readonly from: number;
+    readonly to: number;
+    readonly delayMs?: number;
+  }): Promise<Record<string, FinnhubCandle>> {
+    const uniqueTimeframes = Array.from(new Set(params.timeframes));
+    const result: Record<string, FinnhubCandle> = {};
+    const delayMs: number = params.delayMs ?? 0;
+    for (let i = 0; i < uniqueTimeframes.length; i += 1) {
+      const timeframe = uniqueTimeframes[i];
+      const resolution = this.mapTimeframeToResolution(timeframe);
+      result[timeframe] = await this.getCandles(params.symbol, resolution, params.from, params.to);
+      if (delayMs > 0 && i < uniqueTimeframes.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return result;
+  }
+
+  private mapTimeframeToResolution(timeframe: string): string {
+    if (timeframe === 'daily') return 'D';
+    if (timeframe === 'weekly') return 'W';
+    if (timeframe === 'monthly') return 'M';
+    if (timeframe === '60min') return '60';
+    if (timeframe === '30min') return '30';
+    if (timeframe === '15min') return '15';
+    if (timeframe === '5min') return '5';
+    if (timeframe === '1min') return '1';
+    if (timeframe === 'D') return 'D';
+    if (timeframe === 'W') return 'W';
+    if (timeframe === 'M') return 'M';
+    if (['60', '30', '15', '5', '1'].includes(timeframe)) return timeframe;
+    return 'D';
+  }
+
   private buildCandleCacheKey(params: {
     symbol: string;
     resolution: string;

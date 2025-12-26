@@ -14,6 +14,7 @@ export class IngestionScheduler {
   constructor(
     @InjectQueue('eod-ingest') private eodQueue: Queue<EodIngestJob>,
     @InjectQueue('symbol-sync') private symbolSyncQueue: Queue<SymbolSyncJob>,
+    @InjectQueue('intraday-refresh') private intradayQueue: Queue<{ skip?: number; take?: number; resolution?: string; delayMs?: number }>,
     @InjectQueue('metrics-refresh') private metricsQueue: Queue<MetricsRefreshJob>,
     private readonly prisma: PrismaService,
   ) { }
@@ -178,5 +179,66 @@ export class IngestionScheduler {
     );
 
     this.logger.log('✓ Queued manual metrics refresh job');
+  }
+
+  @Cron('0 */15 * * * *', { timeZone: 'America/New_York' })
+  public async scheduleIntradayRefresh(): Promise<void> {
+    if (!this.isMarketOpen()) {
+      return;
+    }
+    const activeSymbolsCount = await this.prisma.symbol.count({ where: { isActive: true } });
+    const batchSize = Number(process.env.INTRADAY_REFRESH_BATCH_SIZE ?? 50);
+    const delayMs = Number(process.env.INTRADAY_REFRESH_DELAY_MS ?? 1100);
+    const maxBatches = Number(process.env.INTRADAY_REFRESH_MAX_BATCHES ?? 2);
+    const jobs = [] as Array<{ name: string; data: { skip: number; take: number; resolution: string; delayMs: number } }>;
+    for (let skip = 0, batchIndex = 0; skip < activeSymbolsCount && batchIndex < maxBatches; skip += batchSize, batchIndex += 1) {
+      jobs.push({
+        name: `intraday-refresh-${skip}`,
+        data: {
+          skip,
+          take: batchSize,
+          resolution: '15min',
+          delayMs,
+        },
+      });
+    }
+    if (jobs.length === 0) {
+      this.logger.warn('No active symbols found for intraday refresh');
+      return;
+    }
+    await this.intradayQueue.addBulk(
+      jobs.map((job) => ({
+        name: job.name,
+        data: job.data,
+        opts: {
+          attempts: 1,
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      }))
+    );
+    this.logger.debug(`✓ Queued intraday refresh batches: ${jobs.length} (batchSize=${batchSize})`);
+  }
+
+  private isMarketOpen(): boolean {
+    const timeZone = process.env.MARKET_TIMEZONE ?? 'America/New_York';
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+    const valueByType = new Map(parts.map((p) => [p.type, p.value] as const));
+    const weekday = valueByType.get('weekday');
+    if (weekday === 'Sat' || weekday === 'Sun') {
+      return false;
+    }
+    const hour = Number(valueByType.get('hour') ?? '0');
+    const minute = Number(valueByType.get('minute') ?? '0');
+    const minutesFromMidnight = (hour * 60) + minute;
+    const openMinutes = 9 * 60 + 30;
+    const closeMinutes = 16 * 60;
+    return minutesFromMidnight >= openMinutes && minutesFromMidnight < closeMinutes;
   }
 }
